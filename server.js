@@ -7,7 +7,7 @@ const app = express();
 app.use(cors());
 app.use(express.static(path.join(__dirname, 'public')));
 
-const API_KEY = '323236440145e1410e54b159179e1bfbb24b98fafd58a57d0047a9b4c12dadf8';
+const API_KEY = decodeURIComponent('323236440145e1410e54b159179e1bfbb24b98fafd58a57d0047a9b4c12dadf8');
 const TRADE_URL = 'https://apis.data.go.kr/1613000/RTMSDataSvcAptTrade/getRTMSDataSvcAptTrade';
 const RENT_URL  = 'https://apis.data.go.kr/1613000/RTMSDataSvcAptRent/getRTMSDataSvcAptRent';
 
@@ -20,32 +20,34 @@ function isCacheValid(key) {
 
 async function fetchFromAPI(url, params) {
   const res = await axios.get(url, {
-    params: { serviceKey: API_KEY, numOfRows: 1000, pageNo: 1, ...params }
+    params: { serviceKey: API_KEY, numOfRows: 1000, pageNo: 1, ...params },
+    responseType: 'text'
   });
   return res.data;
 }
 
 function parseXML(xmlStr) {
   const items = [];
+  if (!xmlStr || typeof xmlStr !== 'string') return items;
   const itemMatches = xmlStr.match(/<item>([\s\S]*?)<\/item>/g) || [];
   itemMatches.forEach(item => {
     const obj = {};
-    const fields = item.match(/<(\w+)>([\s\S]*?)<\/\1>/g) || [];
-    fields.forEach(field => {
-      const m = field.match(/<(\w+)>([\s\S]*?)<\/\1>/);
-      if (m) obj[m[1]] = m[2].trim();
-    });
-    items.push(obj);
+    const tagRegex = /<([a-zA-Z_][a-zA-Z0-9_]*)(?:\s[^>]*)?>([^<]*)<\/\1>/g;
+    let match;
+    while ((match = tagRegex.exec(item)) !== null) {
+      obj[match[1]] = match[2].trim();
+    }
+    if (Object.keys(obj).length > 0) items.push(obj);
   });
   return items;
 }
 
 function toAmt(str) {
   if (!str) return 0;
-  return parseInt(str.replace(/,/g, '').replace(/\s/g, '')) || 0;
+  return parseInt(String(str).replace(/,/g, '').replace(/\s/g, '')) || 0;
 }
 
-// 매매 API (개별 조회용)
+// 매매 API
 app.get('/api/trade', async (req, res) => {
   try {
     const { LAWD_CD, DEAL_YMD } = req.query;
@@ -54,14 +56,14 @@ app.get('/api/trade', async (req, res) => {
       const data = await fetchFromAPI(TRADE_URL, { LAWD_CD, DEAL_YMD });
       cache[key] = { data, timestamp: Date.now() };
     }
-    res.set('Content-Type', 'application/xml');
+    res.set('Content-Type', 'application/xml; charset=utf-8');
     res.send(cache[key].data);
   } catch (e) {
     res.status(500).json({ error: e.message });
   }
 });
 
-// 전월세 API (개별 조회용)
+// 전월세 API
 app.get('/api/rent', async (req, res) => {
   try {
     const { LAWD_CD, DEAL_YMD } = req.query;
@@ -70,14 +72,14 @@ app.get('/api/rent', async (req, res) => {
       const data = await fetchFromAPI(RENT_URL, { LAWD_CD, DEAL_YMD });
       cache[key] = { data, timestamp: Date.now() };
     }
-    res.set('Content-Type', 'application/xml');
+    res.set('Content-Type', 'application/xml; charset=utf-8');
     res.send(cache[key].data);
   } catch (e) {
     res.status(500).json({ error: e.message });
   }
 });
 
-// 홈 대시보드 전용 - 서버에서 집계 후 JSON 반환
+// 대시보드 API
 app.get('/api/dashboard', async (req, res) => {
   try {
     const key = 'dashboard';
@@ -106,6 +108,7 @@ app.get('/api/dashboard', async (req, res) => {
         try {
           const tData = await fetchFromAPI(TRADE_URL, { LAWD_CD: gu, DEAL_YMD: ym });
           const tItems = parseXML(tData);
+          console.log(`${ym} ${gu} 매매 ${tItems.length}건`);
           tItems.forEach(d => {
             const v = toAmt(d.dealAmount);
             if (v > 1000) {
@@ -113,7 +116,9 @@ app.get('/api/dashboard', async (req, res) => {
               if (ym >= '202604') latestTrades.push({ ...d, ym });
             }
           });
+        } catch (e) { console.log(`매매 오류 ${ym} ${gu}:`, e.message); }
 
+        try {
           const rData = await fetchFromAPI(RENT_URL, { LAWD_CD: gu, DEAL_YMD: ym });
           const rItems = parseXML(rData);
           rItems.forEach(d => {
@@ -125,12 +130,13 @@ app.get('/api/dashboard', async (req, res) => {
               if (wol > 0) wAmts.push(wol);
             }
           });
-        } catch (e) {}
+        } catch (e) { console.log(`전월세 오류 ${ym} ${gu}:`, e.message); }
       }
+
       if (tAmts.length) tradeByMonth[ym] = Math.round(tAmts.reduce((a,b)=>a+b,0)/tAmts.length);
       if (jAmts.length) jeonByMonth[ym]  = Math.round(jAmts.reduce((a,b)=>a+b,0)/jAmts.length);
       if (wAmts.length) wolByMonth[ym]   = Math.round(wAmts.reduce((a,b)=>a+b,0)/wAmts.length);
-      console.log(`${ym} 처리완료`);
+      console.log(`${ym} 처리완료 - 매매평균:${tradeByMonth[ym]||0}만, 전세평균:${jeonByMonth[ym]||0}만, 월세평균:${wolByMonth[ym]||0}만`);
     }
 
     latestTrades.sort((a,b) => parseInt(b.dealDay||0) - parseInt(a.dealDay||0));
