@@ -3,490 +3,216 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-<title>단지랩 DanjiLab — 아파트 실거래가 입지 비교분석</title>
+<title>단지랩 DanjiLab — 서울 아파트 실거래가 입지 비교분석</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;600;700&family=DM+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;600;700&family=DM+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
 <script type="text/javascript" src="//dapi.kakao.com/v2/maps/sdk.js?appkey=e83f712252e8ffb368b9db36be90f89f&libraries=services,clusterer"></script>
-
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 :root{
-  --navy:#0a1628;
-  --navy2:#0f2040;
-  --navy3:#162a50;
-  --gold:#c9a84c;
-  --gold2:#e8c96a;
-  --accent:#2563eb;
-  --accent2:#ef4444;
-  --warn:#f59e0b;
-  --success:#10b981;
-  --bg:#f8f9fc;
-  --card:#ffffff;
-  --border:#e5e9f2;
-  --text1:#0f172a;
-  --text2:#64748b;
-  --text3:#94a3b8;
-  --radius:12px;
-  --shadow:0 1px 3px rgba(0,0,0,0.08),0 4px 16px rgba(0,0,0,0.06);
-  --shadow-lg:0 4px 24px rgba(0,0,0,0.12),0 12px 48px rgba(0,0,0,0.08);
+  --navy:#0a1628;--navy2:#0f2040;--navy3:#162a50;
+  --gold:#c9a84c;--gold2:#e8c96a;
+  --accent:#2563eb;--accent2:#ef4444;--warn:#f59e0b;--success:#10b981;
+  --bg:#f0f4f8;--card:#ffffff;--border:#e2e8f0;
+  --text1:#0f172a;--text2:#475569;--text3:#94a3b8;
+  --radius:12px;--shadow:0 1px 3px rgba(0,0,0,0.07),0 4px 12px rgba(0,0,0,0.05);
 }
 html{scroll-behavior:smooth}
-body{font-family:'Noto Sans KR',-apple-system,sans-serif;background:var(--bg);color:var(--text1);min-height:100vh;-webkit-font-smoothing:antialiased}
+body{font-family:'Noto Sans KR',-apple-system,sans-serif;background:var(--bg);color:var(--text1);-webkit-font-smoothing:antialiased}
 
-/* ── NAV ── */
-.nav{
-  background:var(--navy);
-  height:60px;padding:0 20px;
-  display:flex;align-items:center;justify-content:space-between;
-  position:sticky;top:0;z-index:200;
-  border-bottom:1px solid rgba(201,168,76,0.15);
-}
-.nav-logo{
-  display:flex;align-items:center;gap:8px;
-  color:#fff;font-family:'DM Sans',sans-serif;font-size:18px;font-weight:700;letter-spacing:-0.3px;
-  text-decoration:none;
-}
-.nav-logo-badge{
-  background:linear-gradient(135deg,var(--gold),var(--gold2));
-  color:var(--navy);font-size:10px;font-weight:700;
-  padding:2px 6px;border-radius:4px;letter-spacing:0.5px;
-}
+/* NAV */
+.nav{background:var(--navy);height:56px;padding:0 16px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:300;border-bottom:1px solid rgba(201,168,76,0.12)}
+.nav-logo{color:#fff;font-family:'DM Sans',sans-serif;font-size:17px;font-weight:700;letter-spacing:-0.3px;display:flex;align-items:center;gap:7px;cursor:pointer}
+.nav-logo-sub{font-size:9px;background:linear-gradient(135deg,var(--gold),var(--gold2));color:var(--navy);padding:2px 5px;border-radius:3px;font-weight:700;letter-spacing:0.5px}
 .nav-links{display:flex;gap:2px}
-.nav-link{
-  color:rgba(255,255,255,0.6);font-size:13px;padding:7px 11px;
-  border-radius:7px;cursor:pointer;border:none;background:none;
-  transition:all 0.15s;white-space:nowrap;font-family:'Noto Sans KR',sans-serif;
-}
-.nav-link:hover,.nav-link.active{background:rgba(255,255,255,0.1);color:#fff}
+.nav-link{color:rgba(255,255,255,0.55);font-size:12px;padding:6px 10px;border-radius:6px;cursor:pointer;border:none;background:none;transition:all .15s;font-family:'Noto Sans KR',sans-serif;white-space:nowrap}
+.nav-link:hover,.nav-link.active{background:rgba(255,255,255,0.09);color:#fff}
 .nav-link.active{color:var(--gold2)}
-.nav-right{display:flex;gap:8px;align-items:center}
-.btn-login{
-  border:1px solid rgba(255,255,255,0.2);color:rgba(255,255,255,0.8);
-  background:transparent;padding:7px 14px;border-radius:8px;
-  font-size:13px;cursor:pointer;transition:all 0.15s;
-  font-family:'Noto Sans KR',sans-serif;
-}
-.btn-login:hover{background:rgba(255,255,255,0.08);border-color:rgba(255,255,255,0.4)}
-.btn-signup{
-  background:linear-gradient(135deg,var(--gold),var(--gold2));
-  color:var(--navy);border:none;padding:7px 14px;border-radius:8px;
-  font-size:13px;font-weight:700;cursor:pointer;
-  font-family:'Noto Sans KR',sans-serif;
-}
+.nav-right{display:flex;gap:6px}
+.btn-login{border:1px solid rgba(255,255,255,0.18);color:rgba(255,255,255,0.75);background:transparent;padding:6px 12px;border-radius:7px;font-size:12px;cursor:pointer;font-family:'Noto Sans KR',sans-serif}
+.btn-signup{background:linear-gradient(135deg,var(--gold),var(--gold2));color:var(--navy);border:none;padding:6px 12px;border-radius:7px;font-size:12px;font-weight:700;cursor:pointer;font-family:'Noto Sans KR',sans-serif}
 
-/* ── PAGE ── */
+/* PAGE */
 .page{display:none}.page.active{display:block}
 
-/* ── HERO ── */
-.hero{
-  background:linear-gradient(160deg,var(--navy) 0%,var(--navy2) 50%,var(--navy3) 100%);
-  padding:40px 20px 32px;position:relative;overflow:hidden;
-}
-.hero::before{
-  content:'';position:absolute;inset:0;
-  background:radial-gradient(ellipse 80% 60% at 70% 50%,rgba(201,168,76,0.08) 0%,transparent 70%);
-}
-.hero-inner{max-width:960px;margin:0 auto;position:relative}
-.hero h1{
-  font-family:'DM Sans',sans-serif;
-  font-size:clamp(22px,4vw,32px);font-weight:700;
-  color:#fff;line-height:1.25;letter-spacing:-0.5px;margin-bottom:8px;
-}
-.hero h1 em{
-  background:linear-gradient(135deg,var(--gold),var(--gold2));
-  -webkit-background-clip:text;-webkit-text-fill-color:transparent;
-  background-clip:text;font-style:normal;
-}
-.hero-sub{color:rgba(255,255,255,0.55);font-size:13px;margin-bottom:20px;line-height:1.6}
-.hero-badges{display:flex;gap:6px;flex-wrap:wrap}
-.hero-badge{
-  background:rgba(255,255,255,0.06);
-  border:1px solid rgba(255,255,255,0.1);
-  color:rgba(255,255,255,0.65);font-size:11px;
-  padding:4px 10px;border-radius:20px;
-}
+/* HERO + MAP COMBO */
+.home-hero{background:linear-gradient(160deg,var(--navy) 0%,var(--navy2) 100%);padding:20px 16px 0;position:relative}
+.home-hero::before{content:'';position:absolute;inset:0;background:radial-gradient(ellipse 70% 50% at 80% 30%,rgba(201,168,76,0.07),transparent)}
+.hero-top{max-width:960px;margin:0 auto;position:relative;padding-bottom:16px}
+.hero-title{font-family:'DM Sans',sans-serif;font-size:clamp(20px,3.5vw,28px);font-weight:700;color:#fff;line-height:1.25;letter-spacing:-0.4px;margin-bottom:6px}
+.hero-title em{background:linear-gradient(135deg,var(--gold),var(--gold2));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;font-style:normal}
+.hero-sub{color:rgba(255,255,255,0.5);font-size:12px;margin-bottom:12px}
+.hero-badges{display:flex;gap:5px;flex-wrap:wrap}
+.hero-badge{background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);color:rgba(255,255,255,0.6);font-size:10px;padding:3px 8px;border-radius:20px}
 
-/* ── METRIC STRIP ── */
-.metric-strip{
-  background:var(--navy);
-  border-bottom:1px solid rgba(201,168,76,0.12);
-  padding:0 20px;
-}
-.metric-strip-inner{
-  max-width:960px;margin:0 auto;
-  display:grid;grid-template-columns:repeat(4,1fr);
-  divide:x;
-}
-.metric-item{
-  padding:14px 16px;border-right:1px solid rgba(255,255,255,0.06);
-  text-align:center;
-}
+/* 지표 바 */
+.metric-bar{background:rgba(255,255,255,0.04);border-top:1px solid rgba(255,255,255,0.06)}
+.metric-bar-inner{max-width:960px;margin:0 auto;display:grid;grid-template-columns:repeat(4,1fr)}
+.metric-item{padding:10px 14px;border-right:1px solid rgba(255,255,255,0.05);text-align:center}
 .metric-item:last-child{border-right:none}
-.metric-label{font-size:10px;color:rgba(255,255,255,0.4);letter-spacing:0.5px;margin-bottom:4px;text-transform:uppercase}
-.metric-val{font-family:'DM Sans',sans-serif;font-size:17px;font-weight:700;color:#fff;letter-spacing:-0.3px}
-.metric-chg{font-size:10px;margin-top:2px}
+.metric-lbl{font-size:9px;color:rgba(255,255,255,0.35);letter-spacing:.5px;text-transform:uppercase;margin-bottom:3px}
+.metric-val{font-family:'DM Sans',sans-serif;font-size:15px;font-weight:700;color:#fff;letter-spacing:-.2px}
+.metric-chg{font-size:9px;margin-top:1px}
 .up{color:#f87171}.dn{color:#34d399}
 
-/* ── SECTION ── */
-.section{padding:24px 20px;max-width:960px;margin:0 auto}
-.section-header{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:16px;gap:12px}
-.section-title{font-size:15px;font-weight:600;color:var(--text1);letter-spacing:-0.2px}
-.section-sub{font-size:12px;color:var(--text2);margin-top:3px}
-.badge-live{
-  background:#fef2f2;color:var(--accent2);
-  font-size:10px;padding:3px 8px;border-radius:20px;font-weight:600;
-  white-space:nowrap;margin-top:2px;
-}
-.badge-new{
-  background:#eff6ff;color:var(--accent);
-  font-size:10px;padding:3px 8px;border-radius:20px;font-weight:600;
-  white-space:nowrap;margin-top:2px;
-}
+/* MAP AREA */
+.map-area{background:var(--navy2);padding:12px 16px 0}
+.map-area-inner{max-width:960px;margin:0 auto}
+.map-ctrl-row{display:flex;gap:7px;align-items:center;margin-bottom:10px;flex-wrap:wrap}
+.map-legend{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:8px}
+.legend-dot{width:8px;height:8px;border-radius:50%;display:inline-block;flex-shrink:0}
+.legend-item{display:flex;align-items:center;gap:4px;font-size:10px;color:rgba(255,255,255,0.5)}
+#mainMap{width:100%;height:460px;border-radius:10px 10px 0 0;overflow:hidden;background:#1a2a40}
+@media(max-width:640px){#mainMap{height:320px}}
 
-/* ── MAP SECTION ── */
-.map-section{padding:20px;max-width:960px;margin:0 auto}
-.map-controls{
-  display:flex;gap:8px;flex-wrap:wrap;align-items:center;
-  margin-bottom:12px;
-}
-.map-select{
-  padding:8px 12px;border-radius:8px;
-  border:1px solid var(--border);font-size:13px;
-  background:var(--card);color:var(--text1);
-  font-family:'Noto Sans KR',sans-serif;
-  flex:1;min-width:100px;
-}
-.map-btn{
-  background:var(--navy);color:#fff;border:none;
-  padding:9px 16px;border-radius:8px;font-size:13px;
-  cursor:pointer;font-family:'Noto Sans KR',sans-serif;
-  white-space:nowrap;transition:background 0.15s;
-}
-.map-btn:hover{background:var(--navy3)}
-.map-btn.gold{background:linear-gradient(135deg,var(--gold),var(--gold2));color:var(--navy);font-weight:700}
-.map-legend{display:flex;gap:12px;flex-wrap:wrap;margin-bottom:10px}
-.legend-dot{width:9px;height:9px;border-radius:50%;display:inline-block;flex-shrink:0}
-.legend-item{display:flex;align-items:center;gap:5px;font-size:11px;color:var(--text2)}
+/* CONTENT */
+.content{max-width:960px;margin:0 auto;padding:20px 16px}
 
-#kakaomap{
-  width:100%;height:480px;border-radius:var(--radius);
-  border:1px solid var(--border);overflow:hidden;
-  box-shadow:var(--shadow);background:#e8ecf0;
-}
-@media(max-width:640px){#kakaomap{height:360px}}
+/* SECTION */
+.sec-hd{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:14px;gap:10px}
+.sec-title{font-size:14px;font-weight:600;color:var(--text1);letter-spacing:-.2px}
+.sec-sub{font-size:11px;color:var(--text2);margin-top:2px}
+.badge-live{background:#fef2f2;color:var(--accent2);font-size:9px;padding:2px 7px;border-radius:20px;font-weight:600;white-space:nowrap}
+.badge-new{background:#eff6ff;color:var(--accent);font-size:9px;padding:2px 7px;border-radius:20px;font-weight:600;white-space:nowrap}
 
-.map-placeholder{
-  display:flex;flex-direction:column;align-items:center;justify-content:center;
-  height:100%;color:var(--text3);gap:8px;
-}
-.map-placeholder svg{opacity:0.3}
+/* CHART */
+.chart-card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:16px 18px;margin-bottom:12px;box-shadow:var(--shadow)}
+.chart-title{font-size:13px;font-weight:600;color:var(--text1);margin-bottom:2px}
+.chart-desc{font-size:11px;color:var(--text2);margin-bottom:12px}
+.chart-legend{display:flex;gap:12px;flex-wrap:wrap;margin-bottom:8px}
+.chart-legend .legend-dot{background:#2563eb}
+.chart-wrap{position:relative;width:100%;height:220px}
+.seg-ctrl{display:flex;background:#f1f5f9;border-radius:7px;padding:2px;gap:1px}
+.seg-btn{padding:4px 10px;font-size:11px;border:none;background:none;border-radius:5px;cursor:pointer;color:var(--text2);font-family:'Noto Sans KR',sans-serif;transition:all .15s}
+.seg-btn.active{background:#fff;color:var(--text1);font-weight:600;box-shadow:0 1px 3px rgba(0,0,0,.1)}
 
-/* ── TRADE LIST ── */
-.trade-grid{
-  display:grid;
-  grid-template-columns:repeat(auto-fill,minmax(260px,1fr));
-  gap:8px;margin-top:14px;
-}
-.trade-card{
-  background:var(--card);border:1px solid var(--border);
-  border-radius:10px;padding:12px 14px;
-  display:flex;justify-content:space-between;align-items:center;
-  transition:border-color 0.15s,box-shadow 0.15s;
-}
-.trade-card:hover{border-color:#c7d2e8;box-shadow:var(--shadow)}
-.trade-name{font-size:13px;font-weight:600;color:var(--text1);margin-bottom:3px}
-.trade-meta{font-size:11px;color:var(--text3)}
-.trade-price{font-size:14px;font-weight:700;text-align:right}
-.trade-naver{
-  display:block;font-size:10px;color:#03C75A;
-  text-decoration:none;margin-top:3px;
-  white-space:nowrap;
-}
-.tag-special{
-  display:inline-block;background:#fef2f2;color:var(--accent2);
-  font-size:9px;padding:1px 5px;border-radius:3px;margin-left:4px;
-}
-
-/* ── CHART CARD ── */
-.chart-card{
-  background:var(--card);border:1px solid var(--border);
-  border-radius:var(--radius);padding:18px 20px;margin-bottom:14px;
-  box-shadow:var(--shadow);
-}
-.chart-title{font-size:13px;font-weight:600;color:var(--text1);margin-bottom:3px}
-.chart-desc{font-size:11px;color:var(--text2);margin-bottom:14px}
-.chart-legend{display:flex;gap:14px;margin-bottom:10px;flex-wrap:wrap}
-.chart-wrap{position:relative;width:100%;height:240px}
-
-/* ── FEED ── */
-.feed-list{display:flex;flex-direction:column;gap:7px}
-.feed-item{
-  background:var(--card);border:1px solid var(--border);
-  border-radius:10px;padding:11px 14px;
-  display:flex;align-items:center;gap:10px;
-  transition:border-color 0.15s;
-}
+/* FEED */
+.feed-list{display:flex;flex-direction:column;gap:6px}
+.feed-item{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:10px 13px;display:flex;align-items:center;gap:9px;transition:border-color .15s}
 .feed-item:hover{border-color:#c7d2e8}
-.feed-icon{
-  width:30px;height:30px;border-radius:8px;
-  display:flex;align-items:center;justify-content:center;
-  font-size:14px;flex-shrink:0;
-}
-.feed-icon.normal{background:#eff6ff}
-.feed-icon.rise{background:#fffbeb}
+.feed-icon{width:28px;height:28px;border-radius:7px;display:flex;align-items:center;justify-content:center;font-size:13px;flex-shrink:0}
+.feed-icon.normal{background:#eff6ff}.feed-icon.rise{background:#fffbeb}
 .feed-body{flex:1;min-width:0}
-.feed-name{font-size:13px;font-weight:600;color:var(--text1);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.feed-detail{font-size:11px;color:var(--text3);margin-top:2px}
+.feed-name{font-size:12px;font-weight:600;color:var(--text1);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.feed-detail{font-size:10px;color:var(--text3);margin-top:1px}
 .feed-price{font-size:13px;font-weight:700;flex-shrink:0}
-.tag-rise{
-  display:inline-block;background:#fffbeb;color:var(--warn);
-  font-size:9px;padding:1px 5px;border-radius:3px;margin-left:4px;
-}
+.tag-rise{display:inline-block;background:#fffbeb;color:var(--warn);font-size:9px;padding:1px 4px;border-radius:3px;margin-left:3px}
 
-/* ── LOADING ── */
-.loading{text-align:center;padding:40px;color:var(--text2);font-size:13px}
-.spinner{
-  width:28px;height:28px;border:2px solid #e5e9f2;
-  border-top-color:var(--accent);border-radius:50%;
-  animation:spin 0.7s linear infinite;margin:0 auto 10px;
-}
+/* LOADING */
+.loading{text-align:center;padding:32px;color:var(--text2);font-size:12px}
+.spinner{width:24px;height:24px;border:2px solid #e2e8f0;border-top-color:var(--accent);border-radius:50%;animation:spin .7s linear infinite;margin:0 auto 8px}
 @keyframes spin{to{transform:rotate(360deg)}}
 
-/* ── RENT TOGGLE ── */
-.seg-ctrl{
-  display:flex;background:#f1f4f9;border-radius:8px;padding:2px;
-  gap:2px;
-}
-.seg-btn{
-  padding:5px 11px;font-size:12px;border:none;
-  background:none;border-radius:6px;cursor:pointer;
-  color:var(--text2);font-family:'Noto Sans KR',sans-serif;
-  transition:all 0.15s;
-}
-.seg-btn.active{background:#fff;color:var(--text1);font-weight:600;box-shadow:0 1px 3px rgba(0,0,0,0.1)}
+/* MAP SELECT */
+.map-sel{padding:7px 10px;border-radius:7px;border:1px solid rgba(255,255,255,0.15);font-size:12px;background:rgba(255,255,255,0.08);color:#fff;font-family:'Noto Sans KR',sans-serif;cursor:pointer}
+.map-sel option{background:var(--navy);color:#fff}
+.map-btn{background:linear-gradient(135deg,var(--gold),var(--gold2));color:var(--navy);border:none;padding:7px 14px;border-radius:7px;font-size:12px;font-weight:700;cursor:pointer;font-family:'Noto Sans KR',sans-serif;white-space:nowrap}
+.map-btn.secondary{background:rgba(255,255,255,0.1);color:rgba(255,255,255,0.8);font-weight:400}
 
-/* ── COMPARE ── */
-.compare-row{
-  display:grid;grid-template-columns:1fr auto 1fr;
-  gap:10px;align-items:center;margin-bottom:14px;
-}
-.apt-picker{
-  background:var(--card);border:1px solid var(--border);
-  border-radius:10px;padding:10px 12px;
-}
-.apt-picker select{
-  width:100%;border:none;background:none;
-  font-size:13px;font-weight:600;color:var(--text1);
-  outline:none;cursor:pointer;font-family:'Noto Sans KR',sans-serif;
-}
-.apt-picker-label{font-size:10px;color:var(--text3);margin-bottom:4px;text-transform:uppercase;letter-spacing:0.5px}
-.compare-vs{
-  font-size:12px;font-weight:700;color:var(--text3);
-  text-align:center;
-}
-.compare-btn{
-  background:var(--navy);color:#fff;border:none;
-  padding:11px;border-radius:10px;font-size:13px;font-weight:600;
-  cursor:pointer;width:100%;margin-bottom:18px;
-  font-family:'Noto Sans KR',sans-serif;
-  transition:background 0.15s;
-}
-.compare-btn:hover{background:var(--navy3)}
-
-.tab-bar{display:flex;border-bottom:1px solid var(--border);margin-bottom:18px;gap:0}
-.tab-btn{
-  padding:10px 14px;font-size:13px;color:var(--text2);
-  background:none;border:none;cursor:pointer;
-  border-bottom:2px solid transparent;margin-bottom:-1px;
-  font-family:'Noto Sans KR',sans-serif;transition:color 0.15s;
-}
+/* COMPARE PAGE */
+.section{padding:20px 16px;max-width:960px;margin:0 auto}
+.apt-picker{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:10px 12px}
+.apt-picker-lbl{font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px}
+.apt-picker select{width:100%;border:none;background:none;font-size:13px;font-weight:600;color:var(--text1);outline:none;cursor:pointer;font-family:'Noto Sans KR',sans-serif}
+.compare-row{display:grid;grid-template-columns:1fr auto 1fr;gap:8px;align-items:center;margin-bottom:12px}
+.compare-vs{font-size:11px;font-weight:700;color:var(--text3);text-align:center}
+.compare-btn{background:var(--navy);color:#fff;border:none;padding:10px;border-radius:10px;font-size:13px;font-weight:600;cursor:pointer;width:100%;margin-bottom:16px;font-family:'Noto Sans KR',sans-serif}
+.tab-bar{display:flex;border-bottom:1px solid var(--border);margin-bottom:16px}
+.tab-btn{padding:9px 13px;font-size:12px;color:var(--text2);background:none;border:none;cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-1px;font-family:'Noto Sans KR',sans-serif}
 .tab-btn.active{color:var(--accent);border-bottom-color:var(--accent);font-weight:600}
-
-.cmp-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.cmp-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 @media(max-width:540px){.cmp-grid{grid-template-columns:1fr}}
-.cmp-card{
-  background:var(--card);border:1px solid var(--border);
-  border-radius:var(--radius);padding:14px;
-}
-.cmp-head{display:flex;align-items:center;gap:10px;margin-bottom:12px}
-.cmp-badge{
-  width:26px;height:26px;border-radius:6px;
-  display:flex;align-items:center;justify-content:center;
-  font-size:11px;font-weight:700;flex-shrink:0;
-}
-.cmp-badge.a{background:var(--accent);color:#fff}
-.cmp-badge.b{background:var(--accent2);color:#fff}
+.cmp-card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:13px}
+.cmp-head{display:flex;align-items:center;gap:9px;margin-bottom:11px}
+.cmp-badge{width:24px;height:24px;border-radius:5px;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;flex-shrink:0}
+.cmp-badge.a{background:var(--accent);color:#fff}.cmp-badge.b{background:var(--accent2);color:#fff}
 .cmp-aptname{font-size:13px;font-weight:700;color:var(--text1)}
-.cmp-loc{font-size:11px;color:var(--text3)}
+.cmp-loc{font-size:10px;color:var(--text3)}
 .cmp-rows{display:flex;flex-direction:column}
-.cmp-row{
-  display:flex;justify-content:space-between;align-items:center;
-  padding:6px 0;border-bottom:1px solid var(--border);
-}
+.cmp-row{display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-bottom:1px solid var(--border)}
 .cmp-row:last-child{border-bottom:none}
-.cmp-key{font-size:11px;color:var(--text2)}
-.cmp-val{font-size:12px;font-weight:600;color:var(--text1)}
-.cmp-val.good{color:var(--success)}
-.cmp-val.warn{color:var(--warn)}
-.cmp-val.bad{color:var(--accent2)}
+.cmp-key{font-size:11px;color:var(--text2)}.cmp-val{font-size:11px;font-weight:600;color:var(--text1)}
+.cmp-val.good{color:var(--success)}.cmp-val.warn{color:var(--warn)}.cmp-val.bad{color:var(--accent2)}
+.score-wrap{margin-top:10px}
+.score-row{display:flex;justify-content:space-between;font-size:10px;color:var(--text2);margin-bottom:4px}
+.score-bar{height:4px;background:#e2e8f0;border-radius:2px;overflow:hidden}
+.score-fill{height:100%;border-radius:2px;transition:width .8s ease}
+.ai-card{background:linear-gradient(135deg,#f0f7ff,#f5f0ff);border:1px solid #c7d9f5;border-radius:var(--radius);padding:13px;margin-top:10px}
+.ai-tag{font-size:9px;font-weight:700;color:var(--accent);margin-bottom:5px;letter-spacing:.5px;text-transform:uppercase}
+.ai-text{font-size:12px;color:var(--text1);line-height:1.65}
+.info-box{background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:10px 12px;font-size:11px;color:#92400e;margin-bottom:12px;line-height:1.5}
+.tag-special{display:inline-block;background:#fef2f2;color:var(--accent2);font-size:9px;padding:1px 4px;border-radius:3px;margin-left:3px}
 
-.score-wrap{margin-top:12px}
-.score-row{display:flex;justify-content:space-between;font-size:11px;color:var(--text2);margin-bottom:5px}
-.score-bar{height:5px;background:#e5e9f2;border-radius:3px;overflow:hidden}
-.score-fill{height:100%;border-radius:3px;transition:width 0.8s ease}
-
-.ai-card{
-  background:linear-gradient(135deg,#f0f7ff,#f5f0ff);
-  border:1px solid #c7d9f5;border-radius:var(--radius);
-  padding:14px;margin-top:12px;
-}
-.ai-tag{font-size:10px;font-weight:700;color:var(--accent);margin-bottom:6px;letter-spacing:0.5px;text-transform:uppercase}
-.ai-text{font-size:13px;color:var(--text1);line-height:1.65}
-
-/* ── SPECIAL PAGE ── */
-.sp-item{
-  background:var(--card);border:1px solid var(--border);
-  border-radius:10px;padding:12px 14px;
-  display:flex;gap:10px;margin-bottom:8px;
-}
-.sp-icon{
-  width:30px;height:30px;border-radius:8px;
-  background:#fef2f2;display:flex;align-items:center;
-  justify-content:center;font-size:13px;flex-shrink:0;
-}
-.info-box{
-  background:#fffbeb;border:1px solid #fde68a;
-  border-radius:8px;padding:11px 13px;font-size:12px;
-  color:#92400e;margin-bottom:14px;line-height:1.5;
-}
-
-/* ── SEARCH PAGE ── */
-.search-row{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px}
-.search-select{
-  flex:1;min-width:120px;padding:9px 12px;
-  border-radius:8px;border:1px solid var(--border);
-  font-size:13px;background:var(--card);color:var(--text1);
-  font-family:'Noto Sans KR',sans-serif;
-}
-.search-btn{
-  background:var(--accent);color:#fff;border:none;
-  padding:9px 18px;border-radius:8px;font-size:13px;
-  cursor:pointer;font-family:'Noto Sans KR',sans-serif;
-  white-space:nowrap;
-}
-table{width:100%;border-collapse:collapse;font-size:12px}
-th{
-  background:#f8f9fc;padding:8px 10px;text-align:left;
-  font-weight:600;color:var(--text2);border-bottom:1px solid var(--border);
-  white-space:nowrap;
-}
-td{padding:8px 10px;border-bottom:1px solid #f0f3f9;color:var(--text1)}
+/* SEARCH */
+.search-row{display:flex;gap:7px;flex-wrap:wrap;margin-bottom:14px}
+.search-select{flex:1;min-width:110px;padding:8px 11px;border-radius:8px;border:1px solid var(--border);font-size:12px;background:var(--card);color:var(--text1);font-family:'Noto Sans KR',sans-serif}
+.search-btn{background:var(--accent);color:#fff;border:none;padding:8px 16px;border-radius:8px;font-size:12px;cursor:pointer;font-family:'Noto Sans KR',sans-serif;white-space:nowrap}
+table{width:100%;border-collapse:collapse;font-size:11px}
+th{background:#f8fafc;padding:7px 9px;text-align:left;font-weight:600;color:var(--text2);border-bottom:1px solid var(--border);white-space:nowrap}
+td{padding:7px 9px;border-bottom:1px solid #f0f4f8;color:var(--text1)}
 tr:hover td{background:#fafbfe}
 .price-cell{font-weight:700}
 .special-row td{background:#fff8f8}
 
-/* ── MODAL ── */
-.modal-bg{
-  display:none;position:fixed;inset:0;
-  background:rgba(10,22,40,0.7);z-index:300;
-  align-items:center;justify-content:center;padding:20px;
-  backdrop-filter:blur(4px);
-}
-.modal-bg.open{display:flex}
-.modal{
-  background:var(--card);border-radius:16px;
-  padding:26px 24px 22px;width:100%;max-width:340px;
-  position:relative;box-shadow:var(--shadow-lg);
-}
-.modal-title{font-size:17px;font-weight:700;margin-bottom:3px;letter-spacing:-0.3px}
-.modal-sub{font-size:12px;color:var(--text2);margin-bottom:18px}
-.modal-tabs{
-  display:flex;border:1px solid var(--border);
-  border-radius:8px;overflow:hidden;margin-bottom:18px;
-}
-.modal-tab{
-  flex:1;padding:8px;text-align:center;font-size:13px;
-  cursor:pointer;background:#f8f9fc;color:var(--text2);
-  border:none;font-family:'Noto Sans KR',sans-serif;transition:all 0.15s;
-}
-.modal-tab.active{background:#fff;color:var(--text1);font-weight:600}
-.social-btn{
-  width:100%;padding:11px;border-radius:9px;font-size:13px;
-  font-weight:700;cursor:pointer;border:none;margin-bottom:8px;
-  display:flex;align-items:center;justify-content:center;gap:8px;
-  font-family:'Noto Sans KR',sans-serif;
-}
-.kakao-btn{background:#FEE500;color:#3A2929}
-.naver-btn{background:#03C75A;color:#fff}
-.divider{display:flex;align-items:center;gap:8px;margin:12px 0}
-.divider-line{flex:1;height:1px;background:var(--border)}
-.divider-text{font-size:11px;color:var(--text3)}
-.form-input{
-  width:100%;padding:10px 12px;border-radius:8px;
-  border:1px solid var(--border);font-size:13px;
-  margin-bottom:8px;font-family:'Noto Sans KR',sans-serif;
-  color:var(--text1);
-}
-.form-input:focus{outline:none;border-color:var(--accent)}
-.submit-btn{
-  width:100%;padding:11px;background:var(--navy);color:#fff;
-  border:none;border-radius:9px;font-size:14px;font-weight:700;
-  cursor:pointer;margin-top:4px;font-family:'Noto Sans KR',sans-serif;
-}
-.modal-close{
-  position:absolute;top:14px;right:16px;
-  background:none;border:none;font-size:18px;
-  cursor:pointer;color:var(--text3);
-}
+/* SPECIAL */
+.sp-item{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:11px 13px;display:flex;gap:9px;margin-bottom:7px}
+.sp-icon{width:28px;height:28px;border-radius:7px;background:#fef2f2;display:flex;align-items:center;justify-content:center;font-size:12px;flex-shrink:0}
 
-/* ── MOBILE ── */
-@media(max-width:640px){
-  .nav-links{display:none}
-  .nav-right .btn-login{display:none}
-  .metric-strip-inner{grid-template-columns:repeat(2,1fr)}
-  .metric-item:nth-child(2){border-right:none}
-  .hero{padding:28px 16px 24px}
-  .section{padding:16px}
-  .map-section{padding:16px}
-  .compare-row{grid-template-columns:1fr}
-  .compare-vs{display:none}
-}
-/* 모바일 하단 탭바 */
-.mobile-nav{
-  display:none;
-  position:fixed;bottom:0;left:0;right:0;
-  background:var(--navy);border-top:1px solid rgba(255,255,255,0.08);
-  z-index:150;padding:0 4px 6px;
-  grid-template-columns:repeat(5,1fr);
-}
-@media(max-width:640px){.mobile-nav{display:grid}}
-.mobile-nav-btn{
-  display:flex;flex-direction:column;align-items:center;
-  padding:8px 4px 4px;background:none;border:none;cursor:pointer;
-  color:rgba(255,255,255,0.45);font-size:9px;gap:3px;
-  font-family:'Noto Sans KR',sans-serif;
-  transition:color 0.15s;
-}
-.mobile-nav-btn.active{color:var(--gold2)}
-.mobile-nav-btn svg{width:18px;height:18px;stroke:currentColor;fill:none;stroke-width:1.5}
-@media(max-width:640px){.page.active{padding-bottom:68px}}
+/* MODAL */
+.modal-bg{display:none;position:fixed;inset:0;background:rgba(10,22,40,.72);z-index:400;align-items:center;justify-content:center;padding:16px;backdrop-filter:blur(6px)}
+.modal-bg.open{display:flex}
+.modal{background:var(--card);border-radius:16px;padding:24px 22px 20px;width:100%;max-width:330px;position:relative;box-shadow:0 20px 60px rgba(0,0,0,.3)}
+.modal-title{font-size:16px;font-weight:700;margin-bottom:3px;letter-spacing:-.3px}
+.modal-sub{font-size:11px;color:var(--text2);margin-bottom:16px}
+.modal-tabs{display:flex;border:1px solid var(--border);border-radius:7px;overflow:hidden;margin-bottom:16px}
+.modal-tab{flex:1;padding:7px;text-align:center;font-size:12px;cursor:pointer;background:#f8fafc;color:var(--text2);border:none;font-family:'Noto Sans KR',sans-serif}
+.modal-tab.active{background:#fff;color:var(--text1);font-weight:600}
+.social-btn{width:100%;padding:10px;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;border:none;margin-bottom:7px;display:flex;align-items:center;justify-content:center;gap:7px;font-family:'Noto Sans KR',sans-serif}
+.kakao-btn{background:#FEE500;color:#3A2929}.naver-btn{background:#03C75A;color:#fff}
+.divider{display:flex;align-items:center;gap:7px;margin:10px 0}
+.divider-line{flex:1;height:1px;background:var(--border)}
+.divider-text{font-size:10px;color:var(--text3)}
+.form-input{width:100%;padding:9px 11px;border-radius:7px;border:1px solid var(--border);font-size:12px;margin-bottom:7px;font-family:'Noto Sans KR',sans-serif;color:var(--text1)}
+.form-input:focus{outline:none;border-color:var(--accent)}
+.submit-btn{width:100%;padding:10px;background:var(--navy);color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;margin-top:3px;font-family:'Noto Sans KR',sans-serif}
+.modal-close{position:absolute;top:12px;right:14px;background:none;border:none;font-size:18px;cursor:pointer;color:var(--text3)}
+
+/* 단지 팝업 */
+.apt-popup{font-family:'Noto Sans KR',sans-serif}
+.apt-popup-name{font-size:14px;font-weight:700;color:var(--text1);margin-bottom:3px}
+.apt-popup-sub{font-size:11px;color:var(--text2);margin-bottom:8px}
+.apt-popup-price{font-size:18px;font-weight:700;color:var(--accent);margin-bottom:2px}
+.apt-popup-date{font-size:10px;color:var(--text3);margin-bottom:10px}
+.apt-popup-tags{display:flex;gap:4px;flex-wrap:wrap;margin-bottom:10px}
+.apt-tag{font-size:10px;padding:2px 7px;border-radius:10px;font-weight:500}
+.apt-tag.subway{background:#eff6ff;color:var(--accent)}
+.apt-tag.school{background:#f0fdf4;color:var(--success)}
+.apt-tag.large{background:#fefce8;color:#854d0e}
+.apt-popup-btns{display:flex;gap:6px}
+.popup-btn{flex:1;padding:8px;border-radius:7px;font-size:11px;font-weight:700;cursor:pointer;border:none;font-family:'Noto Sans KR',sans-serif;text-align:center}
+.popup-btn.primary{background:var(--navy);color:#fff}
+.popup-btn.secondary{background:#f1f5f9;color:var(--text1)}
+
+/* 모바일 하단 탭 */
+.mobile-nav{display:none;position:fixed;bottom:0;left:0;right:0;background:var(--navy);border-top:1px solid rgba(255,255,255,0.07);z-index:200;padding:0 4px env(safe-area-inset-bottom,6px);grid-template-columns:repeat(5,1fr)}
+@media(max-width:640px){.mobile-nav{display:grid}.nav-links,.nav-right .btn-login{display:none}.page.active{padding-bottom:64px}}
+.mob-btn{display:flex;flex-direction:column;align-items:center;padding:7px 4px 3px;background:none;border:none;cursor:pointer;color:rgba(255,255,255,.4);font-size:9px;gap:3px;font-family:'Noto Sans KR',sans-serif;transition:color .15s}
+.mob-btn.active{color:var(--gold2)}
+.mob-btn svg{width:17px;height:17px;stroke:currentColor;fill:none;stroke-width:1.6}
+@media(max-width:640px){.metric-bar-inner{grid-template-columns:repeat(2,1fr)}.metric-item:nth-child(2){border-right:none}}
 </style>
 </head>
 <body>
 
-<!-- NAV -->
 <nav class="nav">
-  <a class="nav-logo" href="#" onclick="showPage('home',null);return false">
-    DanjiLab
-    <span class="nav-logo-badge">BETA</span>
-  </a>
+  <div class="nav-logo" onclick="showPage('home',null)">DanjiLab <span class="nav-logo-sub">BETA</span></div>
   <div class="nav-links">
-    <button class="nav-link active" onclick="showPage('home',this)">시세현황</button>
-    <button class="nav-link" onclick="showPage('map',this)">실거래 지도</button>
+    <button class="nav-link active" onclick="showPage('home',this)">홈·지도</button>
     <button class="nav-link" onclick="showPage('search',this)">실거래 조회</button>
     <button class="nav-link" onclick="showPage('compare',this)">단지 비교분석</button>
     <button class="nav-link" onclick="showPage('special',this)">특수거래 감지</button>
+    <button class="nav-link" onclick="showPage('trend',this)">시세 추이</button>
   </div>
   <div class="nav-right">
     <button class="btn-login" onclick="openModal()">로그인</button>
@@ -494,184 +220,142 @@ tr:hover td{background:#fafbfe}
   </div>
 </nav>
 
-<!-- ── HOME ── -->
+<!-- ── HOME (지도 메인) ── -->
 <div id="page-home" class="page active">
-  <div class="hero">
-    <div class="hero-inner">
-      <h1>서울 아파트<br><em>입지·실거래 비교분석</em></h1>
-      <p class="hero-sub">국토부 실거래가 기반 · 단지 간 심층 비교 · 역세권·초품아·건폐율 분석</p>
-      <div class="hero-badges">
-        <span class="hero-badge">🏠 아파트 전용</span>
-        <span class="hero-badge">📍 입지 비교분석</span>
-        <span class="hero-badge">⚠️ 특수거래 감지</span>
-        <span class="hero-badge">📊 전세가율 위험도</span>
-        <span class="hero-badge">🗺️ 실거래 지도</span>
-      </div>
-    </div>
-  </div>
-
-  <!-- 지표 스트립 -->
-  <div class="metric-strip">
-    <div class="metric-strip-inner">
-      <div class="metric-item">
-        <div class="metric-label">전세 평균</div>
-        <div class="metric-val" id="m-jeon">—</div>
-        <div class="metric-chg up" id="m-jeon-chg">집계중</div>
-      </div>
-      <div class="metric-item">
-        <div class="metric-label">월세 평균</div>
-        <div class="metric-val" id="m-wol">—</div>
-        <div class="metric-chg" id="m-wol-chg" style="color:rgba(255,255,255,0.3)">월 임대료</div>
-      </div>
-      <div class="metric-item">
-        <div class="metric-label">4월 매매건수</div>
-        <div class="metric-val" id="m-trade">—</div>
-        <div class="metric-chg" style="color:rgba(255,255,255,0.3)">국토부 기준</div>
-      </div>
-      <div class="metric-item">
-        <div class="metric-label">특수거래 의심</div>
-        <div class="metric-val" id="m-special" style="color:#f87171">—</div>
-        <div class="metric-chg" style="color:rgba(255,255,255,0.3)">시세 -20%↓</div>
-      </div>
-    </div>
-  </div>
-
-  <div class="section">
-    <!-- 전월세 그래프 -->
-    <div class="chart-card">
-      <div class="section-header" style="margin-bottom:0">
+  <div class="home-hero">
+    <div class="hero-top">
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;flex-wrap:wrap">
         <div>
-          <div class="chart-title">서울 아파트 전월세 추이 (2023.05 ~ 2026.05)</div>
-          <div class="chart-desc">3년간 월별 평균 · 강남·서초·송파 기준 · 국토부 실거래가</div>
+          <div class="hero-title">서울 아파트<br><em>실거래가 지도 · 입지 비교</em></div>
+          <div class="hero-sub">국토부 실거래가 기반 · 단지 클릭 → 비교분석</div>
+          <div class="hero-badges">
+            <span class="hero-badge">🏠 아파트 전용</span>
+            <span class="hero-badge">📍 서울 전체</span>
+            <span class="hero-badge">⚡ 최근 실거래가</span>
+            <span class="hero-badge">🔍 단지 비교</span>
+          </div>
         </div>
+      </div>
+    </div>
+    <!-- 지표 바 -->
+    <div class="metric-bar">
+      <div class="metric-bar-inner">
+        <div class="metric-item"><div class="metric-lbl">전세 평균</div><div class="metric-val" id="m-jeon">—</div><div class="metric-chg up" id="m-jeon-chg">집계중</div></div>
+        <div class="metric-item"><div class="metric-lbl">월세 평균</div><div class="metric-val" id="m-wol">—</div><div class="metric-chg" style="color:rgba(255,255,255,.3)">월임대료</div></div>
+        <div class="metric-item"><div class="metric-lbl">4월 거래량</div><div class="metric-val" id="m-trade">—</div><div class="metric-chg" style="color:rgba(255,255,255,.3)">강남3구</div></div>
+        <div class="metric-item"><div class="metric-lbl">특수거래의심</div><div class="metric-val" id="m-special" style="color:#f87171">—</div><div class="metric-chg" style="color:rgba(255,255,255,.3)">시세-20%↓</div></div>
+      </div>
+    </div>
+    <!-- 지도 컨트롤 -->
+    <div class="map-area">
+      <div class="map-area-inner">
+        <div class="map-ctrl-row">
+          <select class="map-sel" id="map-filter">
+            <option value="all">전체 단지</option>
+            <option value="school">초품아</option>
+            <option value="subway">역세권 (5분내)</option>
+            <option value="large">대단지 (700세대↑)</option>
+          </select>
+          <button class="map-btn" onclick="applyFilter()">필터 적용</button>
+          <button class="map-btn secondary" onclick="resetFilter()">전체 보기</button>
+          <span style="font-size:10px;color:rgba(255,255,255,.4);margin-left:4px" id="map-count-lbl"></span>
+        </div>
+        <div class="map-legend">
+          <span class="legend-item"><span class="legend-dot" style="background:#2563eb"></span>일반</span>
+          <span class="legend-item"><span class="legend-dot" style="background:#10b981"></span>초품아</span>
+          <span class="legend-item"><span class="legend-dot" style="background:#f59e0b"></span>역세권</span>
+          <span class="legend-item"><span class="legend-dot" style="background:#8b5cf6"></span>대단지</span>
+          <span class="legend-item"><span class="legend-dot" style="background:#ef4444"></span>재건축</span>
+        </div>
+        <div id="mainMap">
+          <div class="loading"><div class="spinner"></div>지도 로딩 중...</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 최신 실거래 피드 -->
+  <div class="content">
+    <div class="sec-hd">
+      <div><div class="sec-title">최신 아파트 실거래</div><div class="sec-sub">강남·서초·송파 기준 · 아파트 전용 · 특수거래 제외</div></div>
+      <span class="badge-live">LIVE</span>
+    </div>
+    <div id="feed-loading" class="loading"><div class="spinner"></div></div>
+    <div id="feed-list" class="feed-list" style="display:none"></div>
+  </div>
+</div>
+
+<!-- ── TREND ── -->
+<div id="page-trend" class="page">
+  <div class="content">
+    <div class="sec-hd">
+      <div><div class="sec-title">서울 아파트 시세 추이</div><div class="sec-sub">2023.05 ~ 2026.05 · 강남·서초·송파 기준 · 국토부 실거래가</div></div>
+    </div>
+    <div class="chart-card">
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:8px">
+        <div><div class="chart-title">전월세 추이</div><div class="chart-desc">3년간 월별 전세·월세 평균</div></div>
         <div class="seg-ctrl">
           <button class="seg-btn active" onclick="toggleRent('all',this)">전체</button>
           <button class="seg-btn" onclick="toggleRent('jeon',this)">전세</button>
           <button class="seg-btn" onclick="toggleRent('wol',this)">월세</button>
         </div>
       </div>
-      <div class="chart-legend" style="margin-top:12px">
-        <span class="legend-item"><span class="legend-dot" style="background:#2563eb"></span>전세 평균</span>
-        <span class="legend-item"><span class="legend-dot" style="background:#ef4444"></span>월세 평균 (만원/월)</span>
+      <div class="chart-legend" style="margin-top:10px">
+        <span class="legend-item" style="color:var(--text2)"><span class="legend-dot" style="background:#2563eb"></span>전세</span>
+        <span class="legend-item" style="color:var(--text2)"><span class="legend-dot" style="background:#ef4444"></span>월세(만원/월)</span>
       </div>
-      <div id="rent-loading" class="loading"><div class="spinner"></div>국토부 데이터 로딩 중...</div>
+      <div id="rent-loading" class="loading"><div class="spinner"></div></div>
       <div class="chart-wrap" id="rent-wrap" style="display:none"><canvas id="rentChart"></canvas></div>
     </div>
-
-    <!-- 매매 그래프 -->
     <div class="chart-card">
-      <div class="chart-title">서울 아파트 매매가 추이 (2023.05 ~ 2026.05)</div>
-      <div class="chart-desc">3년간 월별 평균 매매가 · 강남·서초·송파 기준 · 국토부 실거래가</div>
+      <div class="chart-title">매매가 추이</div>
+      <div class="chart-desc">3년간 월별 매매 평균가</div>
       <div class="chart-legend">
-        <span class="legend-item"><span class="legend-dot" style="background:#10b981"></span>매매 평균가</span>
-        <span class="legend-item"><span class="legend-dot" style="background:#f59e0b;height:2px;border-radius:0"></span>추세선</span>
+        <span class="legend-item" style="color:var(--text2)"><span class="legend-dot" style="background:#10b981"></span>매매 평균</span>
+        <span class="legend-item" style="color:var(--text2)"><span class="legend-dot" style="background:#f59e0b;height:2px;border-radius:0"></span>추세선</span>
       </div>
-      <div id="buy-loading" class="loading"><div class="spinner"></div>국토부 데이터 로딩 중...</div>
+      <div id="buy-loading" class="loading"><div class="spinner"></div></div>
       <div class="chart-wrap" id="buy-wrap" style="display:none"><canvas id="buyChart"></canvas></div>
     </div>
-
-    <!-- 최신 실거래 피드 -->
-    <div class="section-header">
-      <div>
-        <div class="section-title">최신 아파트 실거래 피드</div>
-        <div class="section-sub">강남·서초·송파 기준 · 아파트 전용 · 특수거래 별도 탭</div>
-      </div>
-      <span class="badge-live">LIVE</span>
-    </div>
-    <div id="feed-loading" class="loading"><div class="spinner"></div>로딩 중...</div>
-    <div id="feed-list" class="feed-list" style="display:none"></div>
-  </div>
-</div>
-
-<!-- ── MAP ── -->
-<div id="page-map" class="page">
-  <div class="map-section">
-    <div class="section-header">
-      <div>
-        <div class="section-title">실거래가 지도</div>
-        <div class="section-sub">아파트 전용 · 핀 클릭 시 상세정보 · 호가는 네이버 부동산 연결</div>
-      </div>
-    </div>
-    <div class="map-controls">
-      <select id="map-gu" class="map-select">
-        <option value="11710">송파구</option>
-        <option value="11680">강남구</option>
-        <option value="11650">서초구</option>
-        <option value="11440">마포구</option>
-        <option value="11200">성동구</option>
-        <option value="11740">강동구</option>
-        <option value="11215">광진구</option>
-        <option value="11545">노원구</option>
-        <option value="11170">용산구</option>
-        <option value="11380">은평구</option>
-        <option value="11110">종로구</option>
-        <option value="11140">중구</option>
-      </select>
-      <select id="map-ym" class="map-select">
-        <option value="202604">2026년 4월</option>
-        <option value="202603">2026년 3월</option>
-        <option value="202602">2026년 2월</option>
-        <option value="202601">2026년 1월</option>
-        <option value="202512">2025년 12월</option>
-      </select>
-      <button class="map-btn gold" onclick="loadMap()">지도 조회</button>
-    </div>
-    <div class="map-legend">
-      <span class="legend-item"><span class="legend-dot" style="background:#2563eb"></span>정상거래</span>
-      <span class="legend-item"><span class="legend-dot" style="background:#ef4444"></span>특수거래 의심</span>
-      <span class="legend-item"><span class="legend-dot" style="background:#f59e0b"></span>급등 거래</span>
-    </div>
-    <div id="kakaomap">
-      <div class="map-placeholder">
-        <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z"/><circle cx="12" cy="9" r="2.5"/></svg>
-        <span style="font-size:13px">구·기간 선택 후 지도 조회 버튼을 클릭하세요</span>
-      </div>
-    </div>
-    <div id="map-count" style="font-size:12px;color:var(--text2);margin:10px 0"></div>
-    <div id="map-list" class="trade-grid"></div>
   </div>
 </div>
 
 <!-- ── SEARCH ── -->
 <div id="page-search" class="page">
   <div class="section">
-    <div class="section-header">
-      <div><div class="section-title">실거래가 직접 조회</div><div class="section-sub">아파트 전용 · 구·기간·유형 선택</div></div>
-    </div>
+    <div class="sec-hd"><div><div class="sec-title">실거래가 직접 조회</div><div class="sec-sub">아파트 전용 · 구·기간·유형 선택</div></div></div>
     <div class="search-row">
       <select class="search-select" id="sel-gu">
-        <option value="11650">서초구</option>
-        <option value="11710" selected>송파구</option>
-        <option value="11680">강남구</option>
-        <option value="11440">마포구</option>
-        <option value="11200">성동구</option>
-        <option value="11215">광진구</option>
-        <option value="11545">노원구</option>
-        <option value="11170">용산구</option>
+        <option value="11650">서초구</option><option value="11710" selected>송파구</option>
+        <option value="11680">강남구</option><option value="11440">마포구</option>
+        <option value="11200">성동구</option><option value="11215">광진구</option>
+        <option value="11350">노원구</option><option value="11170">용산구</option>
+        <option value="11740">강동구</option><option value="11380">은평구</option>
+        <option value="11410">서대문구</option><option value="11590">동작구</option>
+        <option value="11620">관악구</option><option value="11500">강서구</option>
+        <option value="11470">양천구</option><option value="11530">구로구</option>
+        <option value="11560">영등포구</option><option value="11110">종로구</option>
+        <option value="11140">중구</option><option value="11260">중랑구</option>
+        <option value="11230">동대문구</option><option value="11290">성북구</option>
+        <option value="11305">강북구</option><option value="11320">도봉구</option>
+        <option value="11545">금천구</option>
       </select>
       <select class="search-select" id="sel-ym">
-        <option value="202605">2026.05</option>
-        <option value="202604" selected>2026.04</option>
-        <option value="202603">2026.03</option>
-        <option value="202602">2026.02</option>
-        <option value="202601">2026.01</option>
-        <option value="202512">2025.12</option>
-        <option value="202511">2025.11</option>
-        <option value="202510">2025.10</option>
+        <option value="202605">2026.05</option><option value="202604" selected>2026.04</option>
+        <option value="202603">2026.03</option><option value="202602">2026.02</option>
+        <option value="202601">2026.01</option><option value="202512">2025.12</option>
+        <option value="202511">2025.11</option><option value="202510">2025.10</option>
       </select>
       <select class="search-select" id="sel-type">
-        <option value="trade">매매</option>
-        <option value="rent">전월세</option>
+        <option value="trade">매매</option><option value="rent">전월세</option>
       </select>
       <button class="search-btn" onclick="searchTrades()">조회</button>
     </div>
     <div id="search-loading" class="loading" style="display:none"><div class="spinner"></div></div>
-    <div id="search-error" style="display:none;background:#fef2f2;border:1px solid #fecaca;border-radius:8px;padding:12px;font-size:12px;color:#991b1b;margin-bottom:12px"></div>
+    <div id="search-error" style="display:none;background:#fef2f2;border:1px solid #fecaca;border-radius:8px;padding:11px;font-size:11px;color:#991b1b;margin-bottom:10px"></div>
     <div id="search-result" style="display:none">
-      <div style="font-size:12px;color:var(--text2);margin-bottom:10px" id="search-count"></div>
-      <div style="overflow-x:auto">
-        <table><thead id="search-thead"></thead><tbody id="search-tbody"></tbody></table>
-      </div>
+      <div style="font-size:11px;color:var(--text2);margin-bottom:9px" id="search-count"></div>
+      <div style="overflow-x:auto"><table><thead id="search-thead"></thead><tbody id="search-tbody"></tbody></table></div>
     </div>
   </div>
 </div>
@@ -679,38 +363,44 @@ tr:hover td{background:#fafbfe}
 <!-- ── COMPARE ── -->
 <div id="page-compare" class="page">
   <div class="section">
-    <div class="section-header">
-      <div><div class="section-title">단지 비교분석</div><div class="section-sub">입지·실거래·단지정보·전세가율 나란히 비교</div></div>
+    <div class="sec-hd">
+      <div><div class="sec-title">단지 비교분석</div><div class="sec-sub">입지·실거래·단지정보·전세가율 나란히 비교</div></div>
       <span class="badge-new">AI 분석</span>
     </div>
     <div class="compare-row">
-      <div class="apt-picker">
-        <div class="apt-picker-label">단지 A</div>
+      <div class="apt-picker"><div class="apt-picker-lbl">단지 A</div>
         <select id="cmp-a">
           <option value="반포자이|서초구 잠원동|11650">반포자이 (서초구)</option>
           <option value="아크로리버파크|서초구 반포동|11650">아크로리버파크 (서초구)</option>
           <option value="헬리오시티|송파구 가락동|11710" selected>헬리오시티 (송파구)</option>
           <option value="잠실엘스|송파구 잠실동|11710">잠실엘스 (송파구)</option>
           <option value="래미안대치팰리스|강남구 대치동|11680">래미안대치팰리스 (강남구)</option>
+          <option value="압구정현대|강남구 압구정동|11680">압구정현대 (강남구)</option>
+          <option value="은마아파트|강남구 대치동|11680">은마아파트 (강남구)</option>
+          <option value="목동신시가지7단지|양천구 목동|11470">목동신시가지7단지 (양천구)</option>
+          <option value="마포래미안푸르지오|마포구 아현동|11440">마포래미안푸르지오 (마포구)</option>
         </select>
       </div>
       <div class="compare-vs">VS</div>
-      <div class="apt-picker">
-        <div class="apt-picker-label">단지 B</div>
+      <div class="apt-picker"><div class="apt-picker-lbl">단지 B</div>
         <select id="cmp-b">
           <option value="반포자이|서초구 잠원동|11650">반포자이 (서초구)</option>
           <option value="아크로리버파크|서초구 반포동|11650">아크로리버파크 (서초구)</option>
           <option value="헬리오시티|송파구 가락동|11710">헬리오시티 (송파구)</option>
           <option value="잠실엘스|송파구 잠실동|11710" selected>잠실엘스 (송파구)</option>
           <option value="래미안대치팰리스|강남구 대치동|11680">래미안대치팰리스 (강남구)</option>
+          <option value="압구정현대|강남구 압구정동|11680">압구정현대 (강남구)</option>
+          <option value="은마아파트|강남구 대치동|11680">은마아파트 (강남구)</option>
+          <option value="목동신시가지7단지|양천구 목동|11470">목동신시가지7단지 (양천구)</option>
+          <option value="마포래미안푸르지오|마포구 아현동|11440">마포래미안푸르지오 (마포구)</option>
         </select>
       </div>
     </div>
     <button class="compare-btn" onclick="runCompare()">비교분석 실행 →</button>
-    <div id="compare-loading" class="loading" style="display:none"><div class="spinner"></div>분석 중...</div>
+    <div id="compare-loading" class="loading" style="display:none"><div class="spinner"></div></div>
     <div id="compare-result" style="display:none">
       <div class="tab-bar">
-        <button class="tab-btn active" onclick="showTab('입지',this)">입지분석</button>
+        <button class="tab-btn active" onclick="showTab('입지',this)">입지</button>
         <button class="tab-btn" onclick="showTab('시세',this)">실거래가</button>
         <button class="tab-btn" onclick="showTab('단지',this)">단지정보</button>
         <button class="tab-btn" onclick="showTab('전세',this)">전세가율</button>
@@ -726,22 +416,20 @@ tr:hover td{background:#fafbfe}
 <!-- ── SPECIAL ── -->
 <div id="page-special" class="page">
   <div class="section">
-    <div class="section-header">
-      <div><div class="section-title">특수거래 의심 감지</div><div class="section-sub">시세 대비 20% 이하 거래 자동 감지 · 아파트 전용</div></div>
+    <div class="sec-hd">
+      <div><div class="sec-title">특수거래 의심 감지</div><div class="sec-sub">시세 대비 20% 이하 거래 자동 감지</div></div>
       <span class="badge-live">LIVE</span>
     </div>
     <div class="info-box">⚠️ 특수거래 의심 건은 가족간 증여·저가 양도일 수 있습니다. 시세 분석 시 제외하고 비교하는 것을 권장합니다.</div>
     <div class="search-row">
       <select class="search-select" id="sp-gu">
-        <option value="11650">서초구</option>
-        <option value="11710" selected>송파구</option>
-        <option value="11680">강남구</option>
-        <option value="11440">마포구</option>
+        <option value="11650">서초구</option><option value="11710" selected>송파구</option>
+        <option value="11680">강남구</option><option value="11440">마포구</option>
+        <option value="11200">성동구</option><option value="11350">노원구</option>
       </select>
       <select class="search-select" id="sp-ym">
         <option value="202604" selected>2026년 4월</option>
-        <option value="202603">2026년 3월</option>
-        <option value="202602">2026년 2월</option>
+        <option value="202603">2026년 3월</option><option value="202602">2026년 2월</option>
       </select>
       <button class="search-btn" onclick="searchSpecial()">감지</button>
     </div>
@@ -750,28 +438,13 @@ tr:hover td{background:#fafbfe}
   </div>
 </div>
 
-<!-- 모바일 하단 탭바 -->
-<nav class="mobile-nav" id="mobileNav">
-  <button class="mobile-nav-btn active" onclick="showPage('home',this)">
-    <svg viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
-    시세
-  </button>
-  <button class="mobile-nav-btn" onclick="showPage('map',this)">
-    <svg viewBox="0 0 24 24"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z"/><circle cx="12" cy="9" r="2.5"/></svg>
-    지도
-  </button>
-  <button class="mobile-nav-btn" onclick="showPage('compare',this)">
-    <svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="18"/><rect x="14" y="3" width="7" height="18"/></svg>
-    비교
-  </button>
-  <button class="mobile-nav-btn" onclick="showPage('search',this)">
-    <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-    조회
-  </button>
-  <button class="mobile-nav-btn" onclick="showPage('special',this)">
-    <svg viewBox="0 0 24 24"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
-    특수
-  </button>
+<!-- 모바일 하단 탭 -->
+<nav class="mobile-nav">
+  <button class="mob-btn active" onclick="showPage('home',this)"><svg viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>홈·지도</button>
+  <button class="mob-btn" onclick="showPage('trend',this)"><svg viewBox="0 0 24 24"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>시세추이</button>
+  <button class="mob-btn" onclick="showPage('compare',this)"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="18"/><rect x="14" y="3" width="7" height="18"/></svg>비교</button>
+  <button class="mob-btn" onclick="showPage('search',this)"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>조회</button>
+  <button class="mob-btn" onclick="showPage('special',this)"><svg viewBox="0 0 24 24"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>특수</button>
 </nav>
 
 <!-- MODAL -->
@@ -805,30 +478,23 @@ tr:hover td{background:#fafbfe}
 </div>
 
 <script>
-const TRADE_URL='/api/trade', RENT_URL='/api/rent';
-
+const TRADE_URL='/api/trade',RENT_URL='/api/rent';
 function toAmt(s){if(!s&&s!==0)return 0;return parseInt(String(s).replace(/,/g,'').replace(/\s/g,''))||0}
-function fmtAmt(v){if(v>=10000)return(v/10000).toFixed(1)+'억';return v.toLocaleString()+'만'}
-function naverUrl(name){return'https://new.land.naver.com/complexes?ms=37.5,127.0,15&a=APT&e=RETAIL&q='+encodeURIComponent(name)}
+function fmtAmt(v){if(!v)return'—';if(v>=10000)return(v/10000).toFixed(1)+'억';return v.toLocaleString()+'만'}
 
-// 페이지 전환
+let allApartments=[];
+
 function showPage(id,btn){
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
   document.getElementById('page-'+id).classList.add('active');
   if(btn){
-    document.querySelectorAll('.nav-link,.mobile-nav-btn').forEach(b=>b.classList.remove('active'));
+    document.querySelectorAll('.nav-link,.mob-btn').forEach(b=>b.classList.remove('active'));
     btn.classList.add('active');
-    // 모바일 탭도 동기화
-    const idx=['home','map','compare','search','special'].indexOf(id);
-    if(idx>=0){
-      const btns=document.querySelectorAll('.mobile-nav-btn');
-      btns.forEach(b=>b.classList.remove('active'));
-      if(btns[idx])btns[idx].classList.add('active');
-    }
+    const idx=['home','trend','compare','search','special'].indexOf(id);
+    if(idx>=0){const bs=document.querySelectorAll('.mob-btn');bs.forEach(b=>b.classList.remove('active'));if(bs[idx])bs[idx].classList.add('active')}
   }
-  if(id==='map'&&!kakaoMap)setTimeout(initMap,100);
+  if(id==='trend')loadTrend();
 }
-
 function openModal(){document.getElementById('loginModal').classList.add('open')}
 function closeModal(){document.getElementById('loginModal').classList.remove('open')}
 function closeModalBg(e){if(e.target===document.getElementById('loginModal'))closeModal()}
@@ -842,7 +508,6 @@ function showTab(name,btn){
   document.getElementById('tab-'+name).style.display='block';
   document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));btn.classList.add('active');
 }
-
 async function fetchAPI(url,params){
   const qs=new URLSearchParams({...params});
   const res=await fetch(`${url}?${qs}`);
@@ -852,7 +517,132 @@ async function fetchAPI(url,params){
   return data;
 }
 
-// ── 홈 ──
+// ── 카카오맵 ──
+let mainMap=null, openInfoWindow=null, allMarkers=[], overlays=[];
+let selectedApt=null;
+
+function aptColor(apt){
+  if((apt.특징||'').includes('재건축'))return'#ef4444';
+  if(apt.대단지&&(apt.특징||'').includes('초품아'))return'#10b981';
+  if(apt.대단지)return'#8b5cf6';
+  if((apt.특징||'').includes('초품아'))return'#10b981';
+  if(apt.역&&parseInt(apt.역)<6)return'#f59e0b';
+  return'#2563eb';
+}
+
+async function initMainMap(){
+  const container=document.getElementById('mainMap');
+  container.innerHTML='';
+  mainMap=new kakao.maps.Map(container,{center:new kakao.maps.LatLng(37.5322,127.0252),level:8});
+  
+  // 단지 DB 로드
+  try{
+    const res=await fetch('/api/apartments');
+    allApartments=await res.json();
+    renderMarkers(allApartments);
+  }catch(e){console.log('단지 DB 로드 실패',e)}
+}
+
+function renderMarkers(apts){
+  // 기존 마커 제거
+  allMarkers.forEach(m=>m.setMap(null));
+  overlays.forEach(o=>o.setMap(null));
+  allMarkers=[];overlays=[];
+  if(openInfoWindow){openInfoWindow.close();openInfoWindow=null;}
+
+  document.getElementById('map-count-lbl').textContent=`${apts.length}개 단지 표시`;
+
+  apts.forEach(apt=>{
+    const pos=new kakao.maps.LatLng(apt.lat,apt.lng);
+    const color=aptColor(apt);
+    
+    const marker=new kakao.maps.Marker({position:pos,map:mainMap,title:apt.name});
+    
+    const ov=new kakao.maps.CustomOverlay({
+      position:pos,map:mainMap,yAnchor:3.0,
+      content:`<div style="background:${color};color:#fff;padding:2px 6px;border-radius:8px;font-size:9px;font-weight:700;white-space:nowrap;box-shadow:0 1px 4px rgba(0,0,0,.25);cursor:pointer">${apt.name}</div>`
+    });
+    
+    const iw=new kakao.maps.InfoWindow({removable:true});
+    
+    kakao.maps.event.addListener(marker,'click',function(){
+      if(openInfoWindow)openInfoWindow.close();
+      // 로딩 팝업 먼저
+      iw.setContent(`<div style="padding:14px;min-width:220px;font-family:'Noto Sans KR',sans-serif">
+        <div style="font-size:13px;font-weight:700;margin-bottom:8px">${apt.name}</div>
+        <div style="font-size:11px;color:#64748b;margin-bottom:10px">${apt.gu} ${apt.dong} · ${apt.세대수.toLocaleString()}세대 · ${apt.준공}년</div>
+        <div style="text-align:center;padding:8px;color:#94a3b8;font-size:11px">실거래가 조회 중...</div>
+      </div>`);
+      iw.open(mainMap,marker);
+      openInfoWindow=iw;
+      
+      // 실거래가 조회
+      fetch(`/api/apt-price?lawdCd=${apt.lawdCd}&aptNm=${encodeURIComponent(apt.name)}`)
+        .then(r=>r.json())
+        .then(data=>{
+          const tags=[];
+          if((apt.특징||'').includes('초품아'))tags.push('<span class="apt-tag school">초품아</span>');
+          if(apt.역&&parseInt(apt.역)<=5)tags.push('<span class="apt-tag subway">역세권 '+apt.역+'</span>');
+          if(apt.대단지)tags.push('<span class="apt-tag large">대단지 '+apt.세대수.toLocaleString()+'세대</span>');
+          if((apt.특징||'').includes('재건축'))tags.push('<span class="apt-tag" style="background:#fef2f2;color:#ef4444">재건축</span>');
+          
+          iw.setContent(`<div style="padding:14px;min-width:230px;font-family:'Noto Sans KR',sans-serif">
+            <div style="font-size:14px;font-weight:700;color:#0f172a;margin-bottom:3px">${apt.name}</div>
+            <div style="font-size:11px;color:#64748b;margin-bottom:8px">${apt.gu} ${apt.dong} · ${apt.세대수.toLocaleString()}세대 · ${apt.준공}년</div>
+            <div style="font-size:18px;font-weight:700;color:${color};margin-bottom:2px">${data.latest?fmtAmt(data.latest):'거래없음'}</div>
+            <div style="font-size:10px;color:#94a3b8;margin-bottom:8px">${data.latestDate?'최근거래 '+data.latestDate+' ('+data.count+'건)':'최근 3개월 거래 없음'}</div>
+            <div style="display:flex;gap:4px;flex-wrap:wrap;margin-bottom:10px">${tags.join('')}</div>
+            <div style="display:flex;gap:6px">
+              <button onclick="selectAptA('${apt.name}','${apt.gu} ${apt.dong}','${apt.lawdCd}')" style="flex:1;padding:7px;background:#0a1628;color:#fff;border:none;border-radius:7px;font-size:11px;font-weight:700;cursor:pointer;font-family:'Noto Sans KR',sans-serif">A단지로 비교</button>
+              <button onclick="selectAptB('${apt.name}','${apt.gu} ${apt.dong}','${apt.lawdCd}')" style="flex:1;padding:7px;background:#f1f5f9;color:#0f172a;border:none;border-radius:7px;font-size:11px;font-weight:700;cursor:pointer;font-family:'Noto Sans KR',sans-serif">B단지로 비교</button>
+            </div>
+          </div>`);
+        })
+        .catch(()=>{});
+    });
+    allMarkers.push(marker);overlays.push(ov);
+  });
+}
+
+function selectAptA(name,loc,lawdCd){
+  if(openInfoWindow)openInfoWindow.close();
+  // 비교분석 페이지로 이동하면서 A단지 선택
+  const opt=new Option(`${name} (${loc})`,`${name}|${loc}|${lawdCd}`,true,true);
+  const sel=document.getElementById('cmp-a');
+  // 기존 옵션 확인
+  let found=false;
+  for(let o of sel.options){if(o.value===opt.value){sel.value=o.value;found=true;break}}
+  if(!found){sel.add(opt);sel.value=opt.value}
+  showPage('compare',null);
+  document.querySelectorAll('.nav-link').forEach(b=>b.classList.remove('active'));
+  document.querySelectorAll('.nav-link')[2].classList.add('active');
+}
+function selectAptB(name,loc,lawdCd){
+  if(openInfoWindow)openInfoWindow.close();
+  const opt=new Option(`${name} (${loc})`,`${name}|${loc}|${lawdCd}`,true,true);
+  const sel=document.getElementById('cmp-b');
+  let found=false;
+  for(let o of sel.options){if(o.value===opt.value){sel.value=o.value;found=true;break}}
+  if(!found){sel.add(opt);sel.value=opt.value}
+  showPage('compare',null);
+  document.querySelectorAll('.nav-link').forEach(b=>b.classList.remove('active'));
+  document.querySelectorAll('.nav-link')[2].classList.add('active');
+}
+
+function applyFilter(){
+  const f=document.getElementById('map-filter').value;
+  let filtered=allApartments;
+  if(f==='school')filtered=allApartments.filter(a=>(a.특징||'').includes('초품아'));
+  else if(f==='subway')filtered=allApartments.filter(a=>a.역&&parseInt(a.역)<=5);
+  else if(f==='large')filtered=allApartments.filter(a=>a.대단지);
+  renderMarkers(filtered);
+}
+function resetFilter(){
+  document.getElementById('map-filter').value='all';
+  renderMarkers(allApartments);
+}
+
+// ── 홈 로드 ──
 async function loadHome(){
   try{
     const res=await fetch('/api/dashboard');
@@ -860,12 +650,11 @@ async function loadHome(){
     if(d.error)throw new Error(d.error);
     const{jeonAvg,wolAvg,tradeCount,specialCount,jeonChg}=d.metrics;
     document.getElementById('m-jeon').textContent=jeonAvg?fmtAmt(jeonAvg):'—';
-    document.getElementById('m-jeon-chg').textContent=jeonChg>0?`▲ ${jeonChg}%`:jeonChg<0?`▼ ${Math.abs(jeonChg)}%`:'전월비';
+    document.getElementById('m-jeon-chg').textContent=jeonChg>0?`▲${jeonChg}%`:jeonChg<0?`▼${Math.abs(jeonChg)}%`:'전월비';
     document.getElementById('m-jeon-chg').className='metric-chg '+(jeonChg>=0?'up':'dn');
     document.getElementById('m-wol').textContent=wolAvg?wolAvg+'만원':'—';
     document.getElementById('m-trade').textContent=tradeCount?tradeCount+'건':'—';
     document.getElementById('m-special').textContent=specialCount+'건';
-
     // 피드
     const feedEl=document.getElementById('feed-list');
     document.getElementById('feed-loading').style.display='none';
@@ -873,46 +662,48 @@ async function loadHome(){
     const ap=d.feed.map(x=>toAmt(x.dealAmount)).filter(v=>v>0);
     const avg=ap.reduce((a,b)=>a+b,0)/(ap.length||1);
     feedEl.innerHTML=d.feed.map(x=>{
-      const amt=toAmt(x.dealAmount);
-      const rise=amt>avg*1.1;
-      return`<div class="feed-item">
-        <div class="feed-icon ${rise?'rise':'normal'}">${rise?'📈':'🏠'}</div>
-        <div class="feed-body">
-          <div class="feed-name">${x.aptNm||''} ${x.excluUseAr||''}㎡${rise?'<span class="tag-rise">상승</span>':''}</div>
-          <div class="feed-detail">${x.umdNm||''} · ${x.floor||''}층 · ${(x.ym||'').slice(0,4)}.${(x.ym||'').slice(4)}.${String(x.dealDay||'').padStart(2,'0')}</div>
-        </div>
-        <div class="feed-price" style="color:${rise?'var(--warn)':'var(--text1)'}">${fmtAmt(amt)}</div>
-      </div>`;
+      const amt=toAmt(x.dealAmount),rise=amt>avg*1.1;
+      return`<div class="feed-item"><div class="feed-icon ${rise?'rise':'normal'}">${rise?'📈':'🏠'}</div>
+        <div class="feed-body"><div class="feed-name">${x.aptNm||''} ${x.excluUseAr||''}㎡${rise?'<span class="tag-rise">상승</span>':''}</div>
+        <div class="feed-detail">${x.umdNm||''} · ${x.floor||''}층 · ${(x.ym||'').slice(0,4)}.${(x.ym||'').slice(4)}.${String(x.dealDay||'').padStart(2,'0')}</div></div>
+        <div class="feed-price" style="color:${rise?'var(--warn)':'var(--text1)'}">${fmtAmt(amt)}</div></div>`;
     }).join('');
-    await drawCharts(d.charts);
-  }catch(e){
-    document.getElementById('feed-loading').innerHTML='<div style="color:var(--accent2);font-size:12px">'+e.message+'</div>';
-  }
+    // 시세 추이 차트도 준비
+    storeCharts(d.charts);
+  }catch(e){document.getElementById('feed-loading').innerHTML='<div style="color:var(--accent2);font-size:12px">'+e.message+'</div>'}
 }
 
-async function drawCharts(charts){
+let cachedCharts=null;
+let rentChartObj=null;
+function storeCharts(charts){cachedCharts=charts}
+
+function loadTrend(){
+  if(!cachedCharts)return;
+  if(document.getElementById('rent-wrap').style.display==='block')return; // 이미 로드됨
+  drawCharts(cachedCharts);
+}
+
+function drawCharts(charts){
   const{tradeByMonth,jeonByMonth,wolByMonth,months}=charts;
   const labels=months.map(m=>`${m.slice(0,4)}.${m.slice(4)}`);
   const buyData=months.map(m=>tradeByMonth[m]||null);
   const jeonData=months.map(m=>jeonByMonth[m]||null);
   const wolData=months.map(m=>wolByMonth[m]||null);
-  const chartOpts={responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{ticks:{autoSkip:true,maxTicksLimit:10,maxRotation:0,font:{size:10}},grid:{display:false}},y:{ticks:{font:{size:10},callback:v=>v>=10000?(v/10000).toFixed(0)+'억':v.toLocaleString()+'만'},grid:{color:'rgba(0,0,0,0.04)'}}}};
+  const opts={responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{ticks:{autoSkip:true,maxTicksLimit:10,maxRotation:0,font:{size:10}},grid:{display:false}},y:{ticks:{font:{size:10},callback:v=>v>=10000?(v/10000).toFixed(0)+'억':v.toLocaleString()+'만'},grid:{color:'rgba(0,0,0,0.04)'}}}};
   document.getElementById('rent-loading').style.display='none';
   document.getElementById('rent-wrap').style.display='block';
   rentChartObj=new Chart(document.getElementById('rentChart'),{type:'line',data:{labels,datasets:[
     {label:'전세',data:jeonData,borderColor:'#2563eb',backgroundColor:'rgba(37,99,235,0.04)',tension:0.4,pointRadius:2,borderWidth:2},
     {label:'월세',data:wolData,borderColor:'#ef4444',backgroundColor:'rgba(239,68,68,0.04)',tension:0.4,pointRadius:2,borderWidth:2,borderDash:[4,3]}
-  ]},options:chartOpts});
+  ]},options:opts});
   document.getElementById('buy-loading').style.display='none';
   document.getElementById('buy-wrap').style.display='block';
-  const trend=buyData.map((_,i)=>buyData[0]&&buyData[buyData.length-1]?Math.round(buyData.filter(Boolean)[0]+(buyData.filter(Boolean)[buyData.filter(Boolean).length-1]-buyData.filter(Boolean)[0])*i/(buyData.length-1)):null);
+  const trend=buyData.map((_,i)=>{const v=buyData.filter(Boolean);return v.length?Math.round(v[0]+(v[v.length-1]-v[0])*i/(buyData.length-1)):null});
   new Chart(document.getElementById('buyChart'),{type:'line',data:{labels,datasets:[
     {label:'매매',data:buyData,borderColor:'#10b981',backgroundColor:'rgba(16,185,129,0.04)',tension:0.4,pointRadius:2,borderWidth:2},
     {label:'추세',data:trend,borderColor:'#f59e0b',borderWidth:1.5,borderDash:[5,4],pointRadius:0,tension:0}
-  ]},options:chartOpts});
+  ]},options:opts});
 }
-
-let rentChartObj;
 function toggleRent(mode,btn){
   document.querySelectorAll('.seg-btn').forEach(b=>b.classList.remove('active'));btn.classList.add('active');
   if(!rentChartObj)return;
@@ -921,105 +712,9 @@ function toggleRent(mode,btn){
   rentChartObj.update();
 }
 
-// ── 지도 ──
-let kakaoMap=null,mapMarkers=[];
-const GU_COORDS={'11710':{lat:37.5145,lng:127.1059},'11680':{lat:37.5172,lng:127.0473},'11650':{lat:37.4837,lng:127.0324},'11440':{lat:37.5663,lng:126.9014},'11200':{lat:37.5634,lng:127.0360},'11740':{lat:37.5301,lng:127.1238},'11215':{lat:37.5385,lng:127.0823},'11545':{lat:37.6541,lng:127.0568},'11170':{lat:37.5384,lng:126.9654},'11380':{lat:37.6027,lng:126.9291},'11110':{lat:37.5726,lng:126.9788},'11140':{lat:37.5636,lng:126.9976}};
-
-function initMap(){
-  const gu=document.getElementById('map-gu').value;
-  const c=GU_COORDS[gu]||{lat:37.5145,lng:127.1059};
-  const container=document.getElementById('kakaomap');
-  container.innerHTML='';
-  kakaoMap=new kakao.maps.Map(container,{center:new kakao.maps.LatLng(c.lat,c.lng),level:5});
-}
-
-function clearMarkers(){mapMarkers.forEach(m=>m.setMap(null));mapMarkers=[]}
-
-async function loadMap(){
-  const gu=document.getElementById('map-gu').value;
-  const ym=document.getElementById('map-ym').value;
-  const btn=document.querySelector('#page-map .map-btn.gold');
-  btn.textContent='조회 중...';btn.disabled=true;
-  if(!kakaoMap)initMap();
-  else{
-    const c=GU_COORDS[gu]||{lat:37.5145,lng:127.1059};
-    kakaoMap.setCenter(new kakao.maps.LatLng(c.lat,c.lng));
-  }
-  clearMarkers();
-  try{
-    const trades=await fetchAPI(TRADE_URL,{LAWD_CD:gu,DEAL_YMD:ym});
-    const prices=trades.map(d=>toAmt(d.dealAmount)).filter(v=>v>0);
-    const avgP=prices.reduce((a,b)=>a+b,0)/(prices.length||1);
-    const sorted=trades.filter(d=>toAmt(d.dealAmount)>0).sort((a,b)=>parseInt(b.dealDay||0)-parseInt(a.dealDay||0));
-    
-    document.getElementById('map-count').textContent=`총 ${trades.length}건 거래 · 최근 40건 지도 표시 · 평균 ${fmtAmt(Math.round(avgP))}`;
-
-    const ps=new kakao.maps.services.Places();
-    let openIW=null;
-
-    sorted.slice(0,40).forEach(item=>{
-      const amt=toAmt(item.dealAmount);
-      const isSpecial=amt<avgP*0.8;
-      const isRise=amt>avgP*1.15;
-      const color=isSpecial?'#ef4444':isRise?'#f59e0b':'#2563eb';
-      const query=`${item.aptNm} ${item.umdNm||''} 아파트`;
-
-      ps.keywordSearch(query,function(result,status){
-        if(status!==kakao.maps.services.Status.OK)return;
-        const pos=new kakao.maps.LatLng(result[0].y,result[0].x);
-        const marker=new kakao.maps.Marker({position:pos,map:kakaoMap});
-        
-        new kakao.maps.CustomOverlay({
-          position:pos,map:kakaoMap,
-          content:`<div style="background:${color};color:#fff;padding:3px 7px;border-radius:10px;font-size:10px;font-weight:700;white-space:nowrap;box-shadow:0 2px 8px rgba(0,0,0,0.25);cursor:pointer">${fmtAmt(amt)}</div>`,
-          yAnchor:3.2
-        });
-
-        const iw=new kakao.maps.InfoWindow({
-          content:`<div style="padding:14px;min-width:210px;font-family:'Noto Sans KR',sans-serif">
-            <div style="font-size:14px;font-weight:700;margin-bottom:5px">${item.aptNm||''}</div>
-            <div style="font-size:12px;color:#64748b;margin-bottom:8px">${item.umdNm||''} · ${item.excluUseAr||''}㎡ · ${item.floor||''}층</div>
-            <div style="font-size:16px;font-weight:700;color:${color};margin-bottom:4px">${fmtAmt(amt)}</div>
-            <div style="font-size:11px;color:#94a3b8;margin-bottom:10px">${ym.slice(0,4)}.${ym.slice(4)}.${String(item.dealDay||'').padStart(2,'0')} 거래${isSpecial?' · ⚠️ 특수거래의심':''}</div>
-            <a href="${naverUrl(item.aptNm)}" target="_blank" style="display:block;background:#03C75A;color:#fff;text-align:center;padding:8px;border-radius:7px;font-size:12px;text-decoration:none;font-weight:700">네이버 부동산 호가 확인 →</a>
-          </div>`,
-          removable:true
-        });
-        kakao.maps.event.addListener(marker,'click',function(){
-          if(openIW)openIW.close();
-          iw.open(kakaoMap,marker);
-          openIW=iw;
-        });
-        mapMarkers.push(marker);
-      });
-    });
-
-    // 목록
-    document.getElementById('map-list').innerHTML=sorted.slice(0,24).map(d=>{
-      const amt=toAmt(d.dealAmount);
-      const isSp=amt<avgP*0.8;
-      return`<div class="trade-card">
-        <div>
-          <div class="trade-name">${d.aptNm||''} ${d.excluUseAr||''}㎡${isSp?'<span class="tag-special">특수</span>':''}</div>
-          <div class="trade-meta">${d.umdNm||''} · ${d.floor||''}층 · ${String(d.dealDay||'').padStart(2,'0')}일</div>
-        </div>
-        <div>
-          <div class="trade-price" style="color:${isSp?'var(--accent2)':'var(--text1)'}">${fmtAmt(amt)}</div>
-          <a class="trade-naver" href="${naverUrl(d.aptNm)}" target="_blank">네이버 호가 →</a>
-        </div>
-      </div>`;
-    }).join('');
-  }catch(e){
-    document.getElementById('map-list').innerHTML=`<div style="color:var(--accent2);font-size:13px;padding:12px">오류: ${e.message}</div>`;
-  }
-  btn.textContent='지도 조회';btn.disabled=false;
-}
-
 // ── 실거래 조회 ──
 async function searchTrades(){
-  const gu=document.getElementById('sel-gu').value;
-  const ym=document.getElementById('sel-ym').value;
-  const type=document.getElementById('sel-type').value;
+  const gu=document.getElementById('sel-gu').value,ym=document.getElementById('sel-ym').value,type=document.getElementById('sel-type').value;
   document.getElementById('search-loading').style.display='block';
   document.getElementById('search-result').style.display='none';
   document.getElementById('search-error').style.display='none';
@@ -1033,7 +728,7 @@ async function searchTrades(){
     if(type==='trade'){
       document.getElementById('search-thead').innerHTML='<tr><th>단지명</th><th>면적</th><th>층</th><th>거래일</th><th>금액</th><th>비고</th></tr>';
       document.getElementById('search-tbody').innerHTML=data.sort((a,b)=>parseInt(b.dealDay||0)-parseInt(a.dealDay||0)).map(d=>{
-        const amt=toAmt(d.dealAmount);const isSp=amt<avg*0.8;
+        const amt=toAmt(d.dealAmount),isSp=amt<avg*0.8;
         return`<tr class="${isSp?'special-row':''}"><td><strong>${d.aptNm||''}</strong></td><td>${d.excluUseAr||''}㎡</td><td>${d.floor||''}층</td><td>${ym.slice(0,4)}.${ym.slice(4)}.${String(d.dealDay||'').padStart(2,'0')}</td><td class="price-cell">${fmtAmt(amt)}</td><td>${isSp?'<span class="tag-special">특수의심</span>':''}</td></tr>`;
       }).join('');
     }else{
@@ -1053,8 +748,7 @@ async function searchTrades(){
 
 // ── 특수거래 ──
 async function searchSpecial(){
-  const gu=document.getElementById('sp-gu').value;
-  const ym=document.getElementById('sp-ym').value;
+  const gu=document.getElementById('sp-gu').value,ym=document.getElementById('sp-ym').value;
   document.getElementById('special-loading').style.display='block';
   document.getElementById('special-result').innerHTML='';
   try{
@@ -1063,22 +757,17 @@ async function searchSpecial(){
     const avg=prices.reduce((a,b)=>a+b,0)/(prices.length||1);
     const specials=data.filter(d=>toAmt(d.dealAmount)<avg*0.8&&toAmt(d.dealAmount)>0);
     document.getElementById('special-loading').style.display='none';
-    if(!specials.length){document.getElementById('special-result').innerHTML='<div class="loading">이 기간 특수거래 의심 건이 없습니다.</div>';return;}
+    if(!specials.length){document.getElementById('special-result').innerHTML='<div class="loading">이 기간 특수거래 의심 건이 없습니다.</div>';return}
     document.getElementById('special-result').innerHTML=specials.map(d=>{
-      const amt=toAmt(d.dealAmount);
-      const ratio=Math.round((1-amt/avg)*100);
-      return`<div class="sp-item">
-        <div class="sp-icon">⚠️</div>
-        <div style="flex:1">
-          <div style="font-size:13px;font-weight:600">${d.aptNm||''} ${d.excluUseAr||''}㎡ <span class="tag-special">시세 -${ratio}%</span></div>
-          <div style="font-size:11px;color:var(--text3);margin-top:2px">${d.umdNm||''} · ${d.floor||''}층 · ${ym.slice(0,4)}.${ym.slice(4)}.${String(d.dealDay||'').padStart(2,'0')} · 평균 ${fmtAmt(Math.round(avg))} → 실거래 ${fmtAmt(amt)}</div>
-        </div>
-        <div style="font-size:13px;font-weight:700;color:var(--accent2)">${fmtAmt(amt)}</div>
-      </div>`;
+      const amt=toAmt(d.dealAmount),ratio=Math.round((1-amt/avg)*100);
+      return`<div class="sp-item"><div class="sp-icon">⚠️</div>
+        <div style="flex:1"><div style="font-size:12px;font-weight:600">${d.aptNm||''} ${d.excluUseAr||''}㎡ <span class="tag-special">시세 -${ratio}%</span></div>
+        <div style="font-size:10px;color:var(--text3);margin-top:2px">${d.umdNm||''} · ${d.floor||''}층 · ${ym.slice(0,4)}.${ym.slice(4)}.${String(d.dealDay||'').padStart(2,'0')} · 평균 ${fmtAmt(Math.round(avg))} → 실거래 ${fmtAmt(amt)}</div></div>
+        <div style="font-size:12px;font-weight:700;color:var(--accent2)">${fmtAmt(amt)}</div></div>`;
     }).join('');
   }catch(e){
     document.getElementById('special-loading').style.display='none';
-    document.getElementById('special-result').innerHTML=`<div style="color:var(--accent2);font-size:13px">오류: ${e.message}</div>`;
+    document.getElementById('special-result').innerHTML=`<div style="color:var(--accent2);font-size:12px">오류: ${e.message}</div>`;
   }
 }
 
@@ -1089,6 +778,10 @@ const DANJI_INFO={
   '헬리오시티':{세대수:9510,준공:2018,동수:84,건폐율:17,용적률:285,최고층:35,주차:1.3,시공:'삼성물산·현대건설',역:'송파역 5분',초:'송파초 5분(초품아)',중:'가락중 8분',한강:'20분',특징:'초품아·대단지',점수:83},
   '잠실엘스':{세대수:5678,준공:2008,동수:57,건폐율:20,용적률:269,최고층:30,주차:1.3,시공:'삼성물산',역:'잠실역 5분',초:'잠실초 5분(초품아)',중:'잠신중 7분',한강:'15분',특징:'초품아·잠실 핵심',점수:86},
   '래미안대치팰리스':{세대수:3495,준공:2002,동수:35,건폐율:21,용적률:258,최고층:25,주차:1.5,시공:'삼성물산',역:'대치역 3분',초:'대치초 5분',중:'대곡중 7분',한강:'30분',특징:'학군 최강·대치동',점수:89},
+  '압구정현대':{세대수:5320,준공:1976,동수:42,건폐율:23,용적률:200,최고층:15,주차:0.7,시공:'현대건설',역:'압구정역 5분',초:'압구정초 5분',중:'압구정중 7분',한강:'3분',특징:'재건축·한강뷰',점수:90},
+  '은마아파트':{세대수:4424,준공:1979,동수:28,건폐율:24,용적률:204,최고층:14,주차:0.6,시공:'삼성물산',역:'대치역 5분',초:'대치초 7분',중:'대청중 5분',한강:'25분',특징:'재건축·학군',점수:87},
+  '목동신시가지7단지':{세대수:3524,준공:1987,동수:24,건폐율:18,용적률:162,최고층:15,주차:0.8,시공:'현대건설',역:'오목교역 5분',초:'목동초 7분',중:'양정중 5분',한강:'20분',특징:'학군·대단지',점수:82},
+  '마포래미안푸르지오':{세대수:3885,준공:2014,동수:22,건폐율:17,용적률:250,최고층:35,주차:1.5,시공:'삼성물산·대우건설',역:'아현역 5분',초:'아현초 5분(초품아)',중:'서울여중 8분',한강:'15분',특징:'초품아·대단지',점수:82},
 };
 
 async function runCompare(){
@@ -1114,29 +807,19 @@ async function runCompare(){
     const bAvg=avg(bC,'dealAmount')||avg(bTA,'dealAmount');
     const aJ=avg(filter(aRent,aName).filter(d=>!d.monthlyRent||d.monthlyRent==='0'),'deposit');
     const bJ=avg(filter(bRent,bName).filter(d=>!d.monthlyRent||d.monthlyRent==='0'),'deposit');
-    const aJR=aAvg&&aJ?Math.round(aJ/aAvg*100):0;
-    const bJR=bAvg&&bJ?Math.round(bJ/bAvg*100):0;
-    const aInfo=DANJI_INFO[aName]||{};
-    const bInfo=DANJI_INFO[bName]||{};
-
-    document.getElementById('tab-입지').innerHTML=`<div class="cmp-grid">
-      ${cmpLocCard('A','a',aName,aLoc,aInfo)}${cmpLocCard('B','b',bName,bLoc,bInfo)}
-    </div>
+    const aJR=aAvg&&aJ?Math.round(aJ/aAvg*100):0,bJR=bAvg&&bJ?Math.round(bJ/bAvg*100):0;
+    const aInfo=DANJI_INFO[aName]||{},bInfo=DANJI_INFO[bName]||{};
+    document.getElementById('tab-입지').innerHTML=`<div class="cmp-grid">${cmpLoc('A','a',aName,aLoc,aInfo)}${cmpLoc('B','b',bName,bLoc,bInfo)}</div>
     <div class="ai-card"><div class="ai-tag">AI 분석</div><div class="ai-text">${genAI(aName,bName,aInfo,bInfo,aAvg,bAvg,aJR,bJR)}</div></div>`;
-
     document.getElementById('tab-시세').innerHTML=`<div class="chart-card">
       <div class="chart-title">실거래가 비교 (2026년 4월 · 특수거래 제외)</div>
-      <div class="chart-desc">${aName}: ${aC.length}건 평균 ${aAvg?fmtAmt(aAvg):'—'} &nbsp;|&nbsp; ${bName}: ${bC.length}건 평균 ${bAvg?fmtAmt(bAvg):'—'}</div>
-      <div class="chart-wrap"><canvas id="cmpChart"></canvas></div>
-    </div>`;
-
-    document.getElementById('tab-단지').innerHTML=`<div class="cmp-grid">${cmpDanjiCard('A','a',aName,aInfo)}${cmpDanjiCard('B','b',bName,bInfo)}</div>`;
-    document.getElementById('tab-전세').innerHTML=`<div class="cmp-grid">${cmpJeonCard('A','a',aName,aAvg,aJ,aJR)}${cmpJeonCard('B','b',bName,bAvg,bJ,bJR)}</div>
-    <div class="info-box" style="margin-top:12px">전세가율 80% 이상이면 역전세 위험 — 두 단지 상태를 주의 깊게 확인하세요.</div>`;
-
+      <div class="chart-desc">${aName}: ${aC.length}건 평균 ${fmtAmt(aAvg)} &nbsp;|&nbsp; ${bName}: ${bC.length}건 평균 ${fmtAmt(bAvg)}</div>
+      <div class="chart-wrap"><canvas id="cmpChart"></canvas></div></div>`;
+    document.getElementById('tab-단지').innerHTML=`<div class="cmp-grid">${cmpDanji('A','a',aName,aInfo)}${cmpDanji('B','b',bName,bInfo)}</div>`;
+    document.getElementById('tab-전세').innerHTML=`<div class="cmp-grid">${cmpJeon('A','a',aName,aAvg,aJ,aJR)}${cmpJeon('B','b',bName,bAvg,bJ,bJR)}</div>
+    <div class="info-box" style="margin-top:10px">전세가율 80% 이상이면 역전세 위험 — 두 단지 상태를 주의 깊게 확인하세요.</div>`;
     document.getElementById('compare-loading').style.display='none';
     document.getElementById('compare-result').style.display='block';
-
     setTimeout(()=>{
       const ctx=document.getElementById('cmpChart');if(!ctx)return;
       const aA=aC.map(d=>toAmt(d.dealAmount)).filter(v=>v>0).sort((a,b)=>a-b);
@@ -1144,61 +827,58 @@ async function runCompare(){
       new Chart(ctx,{type:'bar',data:{labels:Array.from({length:Math.max(aA.length,bA.length)},(_,i)=>i+1+'번'),datasets:[
         {label:aName,data:aA,backgroundColor:'rgba(37,99,235,0.7)',borderRadius:3},
         {label:bName,data:bA,backgroundColor:'rgba(239,68,68,0.7)',borderRadius:3}
-      ]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:true,position:'top'}},scales:{x:{ticks:{font:{size:10}},grid:{display:false}},y:{ticks:{font:{size:10},callback:v=>v>=10000?(v/10000).toFixed(0)+'억':v.toLocaleString()+'만'},grid:{color:'rgba(0,0,0,0.04)'}}}}});
+      ]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:true,position:'top',labels:{font:{size:11}}}},scales:{x:{ticks:{font:{size:10}},grid:{display:false}},y:{ticks:{font:{size:10},callback:v=>v>=10000?(v/10000).toFixed(0)+'억':v.toLocaleString()+'만'},grid:{color:'rgba(0,0,0,0.04)'}}}}});
     },100);
   }catch(e){
     document.getElementById('compare-loading').style.display='none';
-    document.getElementById('compare-result').innerHTML=`<div style="color:var(--accent2);font-size:13px;padding:12px">오류: ${e.message}</div>`;
+    document.getElementById('compare-result').innerHTML=`<div style="color:var(--accent2);font-size:12px;padding:12px">오류: ${e.message}</div>`;
     document.getElementById('compare-result').style.display='block';
   }
 }
-
-function cmpLocCard(lbl,cls,name,loc,info){
-  return`<div class="cmp-card"><div class="cmp-head"><div class="cmp-badge ${cls}">${lbl}</div><div><div class="cmp-aptname">${name}</div><div class="cmp-loc">${loc}</div></div></div>
-  <div class="cmp-rows">
-    <div class="cmp-row"><span class="cmp-key">최근접 역</span><span class="cmp-val good">${info.역||'—'}</span></div>
-    <div class="cmp-row"><span class="cmp-key">초등학교</span><span class="cmp-val ${info.초&&info.초.includes('초품아')?'good':'warn'}">${info.초||'—'}</span></div>
-    <div class="cmp-row"><span class="cmp-key">중학교</span><span class="cmp-val">${info.중||'—'}</span></div>
-    <div class="cmp-row"><span class="cmp-key">한강접근</span><span class="cmp-val ${info.한강&&parseInt(info.한강)<8?'good':''}">${info.한강||'—'}</span></div>
-    <div class="cmp-row"><span class="cmp-key">특징</span><span class="cmp-val">${info.특징||'—'}</span></div>
-  </div>
-  <div class="score-wrap"><div class="score-row"><span>입지점수</span><span style="font-weight:700;color:${cls==='a'?'var(--accent)':'var(--accent2)'}">${info.점수||0}점</span></div>
-  <div class="score-bar"><div class="score-fill" style="width:${info.점수||0}%;background:${cls==='a'?'#2563eb':'#ef4444'}"></div></div></div></div>`;
-}
-function cmpDanjiCard(lbl,cls,name,info){
-  return`<div class="cmp-card"><div class="cmp-head"><div class="cmp-badge ${cls}">${lbl}</div><div><div class="cmp-aptname">${name}</div></div></div>
-  <div class="cmp-rows">
-    <div class="cmp-row"><span class="cmp-key">세대수</span><span class="cmp-val">${(info.세대수||0).toLocaleString()}세대</span></div>
-    <div class="cmp-row"><span class="cmp-key">준공</span><span class="cmp-val">${info.준공||'—'}년</span></div>
-    <div class="cmp-row"><span class="cmp-key">건폐율</span><span class="cmp-val ${info.건폐율<=18?'good':info.건폐율<=22?'warn':'bad'}">${info.건폐율||'—'}% (${info.건폐율<=18?'넓음':info.건폐율<=22?'보통':'좁음'})</span></div>
-    <div class="cmp-row"><span class="cmp-key">용적률</span><span class="cmp-val">${info.용적률||'—'}%</span></div>
-    <div class="cmp-row"><span class="cmp-key">최고층</span><span class="cmp-val">${info.최고층||'—'}층</span></div>
-    <div class="cmp-row"><span class="cmp-key">주차(세대당)</span><span class="cmp-val ${info.주차>=1.5?'good':''}">${info.주차||'—'}대</span></div>
-    <div class="cmp-row"><span class="cmp-key">시공사</span><span class="cmp-val">${info.시공||'—'}</span></div>
-  </div></div>`;
-}
-function cmpJeonCard(lbl,cls,name,매매,전세,율){
-  const risk=율>=80?'bad':율>=65?'warn':'good';
-  return`<div class="cmp-card"><div class="cmp-head"><div class="cmp-badge ${cls}">${lbl}</div><div><div class="cmp-aptname">${name}</div></div></div>
-  <div class="cmp-rows">
-    <div class="cmp-row"><span class="cmp-key">매매 평균(4월)</span><span class="cmp-val">${매매?fmtAmt(매매):'—'}</span></div>
-    <div class="cmp-row"><span class="cmp-key">전세 평균(4월)</span><span class="cmp-val">${전세?fmtAmt(전세):'—'}</span></div>
-    <div class="cmp-row"><span class="cmp-key">전세가율</span><span class="cmp-val ${risk}">${율||0}%</span></div>
-    <div class="cmp-row"><span class="cmp-key">갭투자 비용</span><span class="cmp-val">${매매&&전세?fmtAmt(매매-전세):'—'}</span></div>
-    <div class="cmp-row"><span class="cmp-key">역전세 위험</span><span class="cmp-val ${risk}">${율>=80?'위험':율>=65?'주의':'안전'}</span></div>
-  </div>
-  ${율?`<div class="score-wrap"><div class="score-row"><span>전세가율</span><span style="font-weight:700;color:${율>=80?'var(--accent2)':율>=65?'var(--warn)':'var(--success)'}">${율}%</span></div>
-  <div class="score-bar"><div class="score-fill" style="width:${Math.min(율,100)}%;background:${율>=80?'#ef4444':율>=65?'#f59e0b':'#10b981'}"></div></div></div>`:''}
-  </div>`;
-}
+function cmpLoc(l,c,n,loc,i){return`<div class="cmp-card"><div class="cmp-head"><div class="cmp-badge ${c}">${l}</div><div><div class="cmp-aptname">${n}</div><div class="cmp-loc">${loc}</div></div></div>
+<div class="cmp-rows">
+  <div class="cmp-row"><span class="cmp-key">최근접 역</span><span class="cmp-val good">${i.역||'—'}</span></div>
+  <div class="cmp-row"><span class="cmp-key">초등학교</span><span class="cmp-val ${i.초&&i.초.includes('초품아')?'good':'warn'}">${i.초||'—'}</span></div>
+  <div class="cmp-row"><span class="cmp-key">중학교</span><span class="cmp-val">${i.중||'—'}</span></div>
+  <div class="cmp-row"><span class="cmp-key">한강접근</span><span class="cmp-val ${i.한강&&parseInt(i.한강)<8?'good':''}">${i.한강||'—'}</span></div>
+  <div class="cmp-row"><span class="cmp-key">특징</span><span class="cmp-val">${i.특징||'—'}</span></div>
+</div>
+<div class="score-wrap"><div class="score-row"><span>입지점수</span><span style="font-weight:700;color:${c==='a'?'var(--accent)':'var(--accent2)'}">${i.점수||0}점</span></div>
+<div class="score-bar"><div class="score-fill" style="width:${i.점수||0}%;background:${c==='a'?'#2563eb':'#ef4444'}"></div></div></div></div>`}
+function cmpDanji(l,c,n,i){return`<div class="cmp-card"><div class="cmp-head"><div class="cmp-badge ${c}">${l}</div><div><div class="cmp-aptname">${n}</div></div></div>
+<div class="cmp-rows">
+  <div class="cmp-row"><span class="cmp-key">세대수</span><span class="cmp-val">${(i.세대수||0).toLocaleString()}세대</span></div>
+  <div class="cmp-row"><span class="cmp-key">준공</span><span class="cmp-val">${i.준공||'—'}년</span></div>
+  <div class="cmp-row"><span class="cmp-key">건폐율</span><span class="cmp-val ${i.건폐율<=18?'good':i.건폐율<=22?'warn':'bad'}">${i.건폐율||'—'}% (${i.건폐율<=18?'넓음':i.건폐율<=22?'보통':'좁음'})</span></div>
+  <div class="cmp-row"><span class="cmp-key">용적률</span><span class="cmp-val">${i.용적률||'—'}%</span></div>
+  <div class="cmp-row"><span class="cmp-key">최고층</span><span class="cmp-val">${i.최고층||'—'}층</span></div>
+  <div class="cmp-row"><span class="cmp-key">주차(세대당)</span><span class="cmp-val ${i.주차>=1.5?'good':''}">${i.주차||'—'}대</span></div>
+  <div class="cmp-row"><span class="cmp-key">시공사</span><span class="cmp-val">${i.시공||'—'}</span></div>
+</div></div>`}
+function cmpJeon(l,c,n,매매,전세,율){const risk=율>=80?'bad':율>=65?'warn':'good';
+return`<div class="cmp-card"><div class="cmp-head"><div class="cmp-badge ${c}">${l}</div><div><div class="cmp-aptname">${n}</div></div></div>
+<div class="cmp-rows">
+  <div class="cmp-row"><span class="cmp-key">매매 평균(4월)</span><span class="cmp-val">${fmtAmt(매매)}</span></div>
+  <div class="cmp-row"><span class="cmp-key">전세 평균(4월)</span><span class="cmp-val">${fmtAmt(전세)}</span></div>
+  <div class="cmp-row"><span class="cmp-key">전세가율</span><span class="cmp-val ${risk}">${율||0}%</span></div>
+  <div class="cmp-row"><span class="cmp-key">갭투자 비용</span><span class="cmp-val">${매매&&전세?fmtAmt(매매-전세):'—'}</span></div>
+  <div class="cmp-row"><span class="cmp-key">역전세 위험</span><span class="cmp-val ${risk}">${율>=80?'위험':율>=65?'주의':'안전'}</span></div>
+</div>
+${율?`<div class="score-wrap"><div class="score-row"><span>전세가율</span><span style="font-weight:700;color:${율>=80?'var(--accent2)':율>=65?'var(--warn)':'var(--success)'}">${율}%</span></div>
+<div class="score-bar"><div class="score-fill" style="width:${Math.min(율,100)}%;background:${율>=80?'#ef4444':율>=65?'#f59e0b':'#10b981'}"></div></div></div>`:''}
+</div>`}
 function genAI(aN,bN,aI,bI,aA,bA,aJR,bJR){
   const pd=aA&&bA?(aA>bA?`${aN}이 ${fmtAmt(aA-bA)} 더 비쌉니다.`:`${bN}이 ${fmtAmt(bA-aA)} 더 비쌉니다.`):'';
   const cp=(aI.초||'').includes('초품아')?aN:(bI.초||'').includes('초품아')?bN:'';
   const hg=(aI.특징||'').includes('학군')?aN:(bI.특징||'').includes('학군')?bN:'';
-  return`${pd} ${cp?cp+'이 초품아 환경으로 자녀 교육에 유리합니다. ':''}${hg?hg+'은 학군 강세 지역입니다. ':''}전세가율은 ${aJR<bJR?aN:bN}이 더 낮아 역전세 위험이 낮습니다. 투자 목적이라면 갭투자 비용과 전세가율을, 실거주 목적이라면 입지점수와 초등학교 거리를 우선 고려하세요.`;
+  return`${pd} ${cp?cp+'이 초품아 환경으로 자녀 교육에 유리합니다. ':''}${hg?hg+'은 학군 강세 지역입니다. ':''}전세가율은 ${aJR<bJR?aN:bN}이 더 낮아 역전세 위험이 낮습니다. 실거주 목적이라면 입지점수와 초등학교 거리를, 투자 목적이라면 전세가율과 갭투자 비용을 우선 확인하세요.`;
 }
 
-window.addEventListener('load',loadHome);
+// 초기화
+window.addEventListener('load',()=>{
+  loadHome();
+  setTimeout(initMainMap,300);
+});
 </script>
 </body>
 </html>
