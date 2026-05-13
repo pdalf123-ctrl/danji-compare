@@ -445,17 +445,10 @@ const GU_CODES = {
 async function fetchAPI(url, params) {
   const qs = new URLSearchParams({ ...params });
   const res = await fetch(`${url}?${qs}`);
-  const text = await res.text();
-  const parser = new DOMParser();
-  const xml = parser.parseFromString(text, 'text/xml');
-  const code = xml.querySelector('resultCode')?.textContent;
-  if (code && code !== '00' && code !== '0000') throw new Error(xml.querySelector('resultMsg')?.textContent || '오류');
-  const items = xml.querySelectorAll('item');
-  return Array.from(items).map(item => {
-    const obj = {};
-    item.childNodes.forEach(n => { if (n.nodeType === 1) obj[n.tagName] = n.textContent.trim(); });
-    return obj;
-  });
+  const data = await res.json();
+  if (Array.isArray(data)) return data;
+  if (data.error) throw new Error(data.error);
+  return data;
 }
 
 function toAmt(str) {
