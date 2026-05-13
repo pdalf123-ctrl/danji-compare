@@ -23,50 +23,62 @@ function toAmt(str) {
   return parseInt(String(str).replace(/,/g, '').replace(/\s/g, '')) || 0;
 }
 
-async function fetchItems(url, params) {
-  const res = await axios.get(url, {
-    params: { serviceKey: API_KEY, numOfRows: 1000, pageNo: 1, _type: 'json', ...params }
-  });
-  const body = res.data?.response?.body;
-  if (!body) return [];
+async function fetchItems(url, LAWD_CD, DEAL_YMD) {
+  // URL에 직접 _type=json 포함해서 호출
+  const fullUrl = `${url}?serviceKey=${API_KEY}&numOfRows=1000&pageNo=1&_type=json&LAWD_CD=${LAWD_CD}&DEAL_YMD=${DEAL_YMD}`;
+  const res = await axios.get(fullUrl);
+  const data = res.data;
+  
+  // 응답 구조 확인
+  if (typeof data === 'string') {
+    console.log('문자열 응답:', data.substring(0, 100));
+    return [];
+  }
+  
+  const body = data?.response?.body;
+  if (!body) {
+    console.log('body 없음:', JSON.stringify(data).substring(0, 200));
+    return [];
+  }
+  
   const items = body.items?.item;
   if (!items) return [];
   return Array.isArray(items) ? items : [items];
 }
 
-// 매매 API (개별 조회용 - JSON 반환)
+// 매매 API
 app.get('/api/trade', async (req, res) => {
   try {
     const { LAWD_CD, DEAL_YMD } = req.query;
     const key = `trade_${LAWD_CD}_${DEAL_YMD}`;
     if (!isCacheValid(key)) {
-      const items = await fetchItems(TRADE_URL, { LAWD_CD, DEAL_YMD });
+      const items = await fetchItems(TRADE_URL, LAWD_CD, DEAL_YMD);
       cache[key] = { data: items, timestamp: Date.now() };
     }
     res.json(cache[key].data);
   } catch (e) {
-    console.error('매매 API 오류:', e.message);
+    console.error('매매 오류:', e.message);
     res.status(500).json({ error: e.message });
   }
 });
 
-// 전월세 API (개별 조회용 - JSON 반환)
+// 전월세 API
 app.get('/api/rent', async (req, res) => {
   try {
     const { LAWD_CD, DEAL_YMD } = req.query;
     const key = `rent_${LAWD_CD}_${DEAL_YMD}`;
     if (!isCacheValid(key)) {
-      const items = await fetchItems(RENT_URL, { LAWD_CD, DEAL_YMD });
+      const items = await fetchItems(RENT_URL, LAWD_CD, DEAL_YMD);
       cache[key] = { data: items, timestamp: Date.now() };
     }
     res.json(cache[key].data);
   } catch (e) {
-    console.error('전월세 API 오류:', e.message);
+    console.error('전월세 오류:', e.message);
     res.status(500).json({ error: e.message });
   }
 });
 
-// 대시보드 API - 서버에서 집계 후 반환
+// 대시보드 API
 app.get('/api/dashboard', async (req, res) => {
   try {
     const key = 'dashboard';
@@ -93,7 +105,8 @@ app.get('/api/dashboard', async (req, res) => {
       let tAmts = [], jAmts = [], wAmts = [];
       for (const gu of guList) {
         try {
-          const tItems = await fetchItems(TRADE_URL, { LAWD_CD: gu, DEAL_YMD: ym });
+          const tItems = await fetchItems(TRADE_URL, gu, ym);
+          console.log(`  ${ym} ${gu} 매매 ${tItems.length}건`);
           tItems.forEach(d => {
             const v = toAmt(d.dealAmount);
             if (v > 1000) {
@@ -104,7 +117,7 @@ app.get('/api/dashboard', async (req, res) => {
         } catch(e) { console.log(`매매 오류 ${ym} ${gu}:`, e.message); }
 
         try {
-          const rItems = await fetchItems(RENT_URL, { LAWD_CD: gu, DEAL_YMD: ym });
+          const rItems = await fetchItems(RENT_URL, gu, ym);
           rItems.forEach(d => {
             const dep = toAmt(d.deposit);
             const wol = toAmt(d.monthlyRent);
@@ -120,7 +133,7 @@ app.get('/api/dashboard', async (req, res) => {
       if (tAmts.length) tradeByMonth[ym] = Math.round(tAmts.reduce((a,b)=>a+b,0)/tAmts.length);
       if (jAmts.length) jeonByMonth[ym]  = Math.round(jAmts.reduce((a,b)=>a+b,0)/jAmts.length);
       if (wAmts.length) wolByMonth[ym]   = Math.round(wAmts.reduce((a,b)=>a+b,0)/wAmts.length);
-      console.log(`${ym} 완료 - 매매:${tradeByMonth[ym]||0}만원 전세:${jeonByMonth[ym]||0}만원 월세:${wolByMonth[ym]||0}만원`);
+      console.log(`${ym} 완료 - 매매:${tradeByMonth[ym]||0}만 전세:${jeonByMonth[ym]||0}만 월세:${wolByMonth[ym]||0}만`);
     }
 
     latestTrades.sort((a,b) => parseInt(b.dealDay||0) - parseInt(a.dealDay||0));
