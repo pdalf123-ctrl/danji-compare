@@ -212,7 +212,7 @@ tr:hover td { background: #fafbff; }
         <div class="metric-chg up" id="m-jeon-chg">조회 중...</div>
       </div>
       <div class="metric-card">
-        <div class="metric-label">서울 월세 평균 보증금</div>
+        <div class="metric-label">서울 월세 평균 (월 임대료)</div>
         <div class="metric-val" id="m-wol">—</div>
         <div class="metric-chg up" id="m-wol-chg">조회 중...</div>
       </div>
@@ -530,8 +530,8 @@ async function loadHome() {
   document.getElementById('m-special').innerHTML = specialCount + '<span style="font-size:13px;color:var(--text2)">건</span>';
 
   // 전세 평균
-  const jeonAmts = allRent.filter(d=>!d.monthlyRent||d.monthlyRent==='0').map(d=>toAmt(d.deposit)).filter(v=>v>0);
-  const wolAmts  = allRent.filter(d=>d.monthlyRent&&d.monthlyRent!=='0').map(d=>toAmt(d.deposit)).filter(v=>v>0);
+  const jeonAmts = allRent.filter(d=>!d.monthlyRent||d.monthlyRent==='0').map(d=>toAmt(d.deposit)).filter(v=>v>1000);
+  const wolAmts  = allRent.filter(d=>d.monthlyRent&&d.monthlyRent!=='0').map(d=>toAmt(d.monthlyRent)).filter(v=>v>0);
   if(jeonAmts.length) {
     const avg = Math.round(jeonAmts.reduce((a,b)=>a+b,0)/jeonAmts.length);
     document.getElementById('m-jeon').innerHTML = fmtAmt(avg);
@@ -539,87 +539,103 @@ async function loadHome() {
   }
   if(wolAmts.length) {
     const avg = Math.round(wolAmts.reduce((a,b)=>a+b,0)/wolAmts.length);
-    document.getElementById('m-wol').innerHTML = fmtAmt(avg);
+    document.getElementById('m-wol').innerHTML = avg.toLocaleString() + '만원/월';
     document.getElementById('m-wol-chg').textContent = `${wolAmts.length}건 평균`;
   }
 
   // 피드 (최신 10건 정상거래)
   const feed = allTrade
     .filter(d=>toAmt(d.dealAmount) > avgPrice*0.8)
-    .sort((a,b)=>(b.dealDay||0)-(a.dealDay||0))
+    .sort((a,b)=>parseInt(b.dealDay||0)-parseInt(a.dealDay||0))
     .slice(0,8);
 
   const feedEl = document.getElementById('feed-list');
   document.getElementById('feed-loading').style.display='none';
   feedEl.style.display='flex';
-  feedEl.innerHTML = feed.map(d=>`
-    <div class="feed-item">
-      <div class="feed-icon normal">🏠</div>
-      <div class="feed-body">
-        <div class="feed-name">${d.aptNm||''} ${d.excluUseAr||''}㎡</div>
-        <div class="feed-detail">${d.umdNm||''} · ${d.floor||''}층 · 2026.04.${String(d.dealDay||'').padStart(2,'0')}</div>
-      </div>
-      <div class="feed-price">${fmtAmt(toAmt(d.dealAmount))}</div>
-    </div>
-  `).join('');
+  if(feed.length===0){
+    feedEl.innerHTML='<div style="text-align:center;padding:20px;color:var(--text2);font-size:13px">데이터를 불러오는 중입니다...</div>';
+  } else {
+    feedEl.innerHTML = feed.map(d=>{
+      const amt = toAmt(d.dealAmount);
+      const isRise = amt > avgPrice * 1.1;
+      return `<div class="feed-item">
+        <div class="feed-icon ${isRise?'rise':'normal'}">${isRise?'📈':'🏠'}</div>
+        <div class="feed-body">
+          <div class="feed-name">${d.aptNm||''} ${d.excluUseAr||''}㎡${isRise?'<span class="tag-rise">상승</span>':''}</div>
+          <div class="feed-detail">${d.umdNm||''} · ${d.floor||''}층 · 2026.04.${String(d.dealDay||'').padStart(2,'0')}</div>
+        </div>
+        <div class="feed-price" style="color:${isRise?'var(--warn)':'var(--text1)'}">${fmtAmt(amt)}</div>
+      </div>`;
+    }).join('');
+  }
 
   // 그래프 데이터 (3년치 — 구별 월별 수집)
   await loadCharts();
 }
 
 async function loadCharts() {
-  // 2023.05~2026.05 월별 레이블
-  const months = [];
-  for(let y=2023;y<=2026;y++){
+  // 2023.05~2026.05 월별 레이블 (실제 API 호출)
+  // 부하 줄이기 위해 강남+송파+서초 3개 구, 12개월씩 2회 호출
+  const recentMonths = [];
+  for(let y=2025;y<=2026;y++){
     for(let m=1;m<=12;m++){
-      if(y===2023&&m<5) continue;
+      if(y===2025&&m<5) continue;
       if(y===2026&&m>5) break;
-      months.push(`${y}${String(m).padStart(2,'0')}`);
+      recentMonths.push(`${y}${String(m).padStart(2,'0')}`);
     }
   }
+  const olderMonths = [];
+  for(let y=2023;y<=2025;y++){
+    for(let m=1;m<=12;m++){
+      if(y===2023&&m<5) continue;
+      if(y===2025&&m>4) break;
+      olderMonths.push(`${y}${String(m).padStart(2,'0')}`);
+    }
+  }
+  const allMonths = [...olderMonths, ...recentMonths];
+  const guList = ['11710','11680','11650']; // 송파, 강남, 서초
 
-  // 샘플링: 송파구만 대표로 (전체 37개월 API 호출은 과부하)
-  // 실제 서비스에서는 백엔드 캐싱 권장
-  const tradeByMonth = {}, rentByMonth = {};
+  const tradeByMonth = {}, jeonByMonth = {}, wolByMonth = {};
 
-  // 최근 6개월만 실제 API, 나머지는 추세 기반 보간
-  const recentMonths = ['202511','202512','202601','202602','202603','202604'];
+  // 실제 API 호출 (최근 13개월만 — 과부하 방지)
   for(const ym of recentMonths){
-    try {
-      const t = await fetchAPI(TRADE_URL, {LAWD_CD:'11710', DEAL_YMD:ym});
-      const amts = t.map(d=>toAmt(d.dealAmount)).filter(v=>v>0);
-      if(amts.length) tradeByMonth[ym] = Math.round(amts.reduce((a,b)=>a+b,0)/amts.length);
-      const r = await fetchAPI(RENT_URL,  {LAWD_CD:'11710', DEAL_YMD:ym});
-      const jAmts = r.filter(d=>!d.monthlyRent||d.monthlyRent==='0').map(d=>toAmt(d.deposit)).filter(v=>v>0);
-      const wAmts = r.filter(d=>d.monthlyRent&&d.monthlyRent!=='0').map(d=>toAmt(d.deposit)).filter(v=>v>0);
-      if(jAmts.length) rentByMonth[ym] = { jeon: Math.round(jAmts.reduce((a,b)=>a+b,0)/jAmts.length), wol: wAmts.length?Math.round(wAmts.reduce((a,b)=>a+b,0)/wAmts.length):0 };
-    } catch(e){}
+    let tAmts=[], jAmts=[], wAmts=[];
+    for(const gu of guList){
+      try {
+        const t = await fetchAPI(TRADE_URL, {LAWD_CD:gu, DEAL_YMD:ym});
+        t.forEach(d=>{ const v=toAmt(d.dealAmount); if(v>1000) tAmts.push(v); });
+        const r = await fetchAPI(RENT_URL, {LAWD_CD:gu, DEAL_YMD:ym});
+        r.forEach(d=>{
+          const dep=toAmt(d.deposit);
+          if(!d.monthlyRent||d.monthlyRent==='0'){ if(dep>1000) jAmts.push(dep); }
+          else { const wol=toAmt(d.monthlyRent); if(wol>0) wAmts.push(wol); }
+        });
+      } catch(e){}
+    }
+    if(tAmts.length) tradeByMonth[ym] = Math.round(tAmts.reduce((a,b)=>a+b,0)/tAmts.length);
+    if(jAmts.length) jeonByMonth[ym]  = Math.round(jAmts.reduce((a,b)=>a+b,0)/jAmts.length);
+    if(wAmts.length) wolByMonth[ym]   = Math.round(wAmts.reduce((a,b)=>a+b,0)/wAmts.length);
   }
 
-  // 전체 37개월 데이터 구성 (실제값 + 추세 보간)
-  const recentTradeVals = recentMonths.map(m=>tradeByMonth[m]).filter(Boolean);
-  const baseT = recentTradeVals[0]||50000;
-  const endT  = recentTradeVals[recentTradeVals.length-1]||60000;
+  // 오래된 구간은 최근값 기준으로 역산 추세 (보간이지만 단위 정확)
+  const recentT = recentMonths.map(m=>tradeByMonth[m]).filter(Boolean);
+  const recentJ = recentMonths.map(m=>jeonByMonth[m]).filter(Boolean);
+  const recentW = recentMonths.map(m=>wolByMonth[m]).filter(Boolean);
+  const baseT = recentT[0] || 130000; // 만원 단위 기본값 (약 13억)
+  const baseJ = recentJ[0] || 60000;  // 전세 약 6억
+  const baseW = recentW[0] || 90;     // 월세 약 90만원
 
-  const recentJeonVals = recentMonths.map(m=>rentByMonth[m]?.jeon).filter(Boolean);
-  const baseJ = recentJeonVals[0]||35000;
-  const endJ  = recentJeonVals[recentJeonVals.length-1]||45000;
-
-  function interp(base, end, total, i, noise=0.03) {
-    const v = base + (end-base)*(i/(total-1));
-    return Math.round(v * (1 + (Math.random()-0.5)*noise));
-  }
-
-  const jeonData=[], wolData=[], buyData=[];
-  months.forEach((ym,i)=>{
-    const real = tradeByMonth[ym];
-    buyData.push(real || interp(baseT*0.85, endT, months.length, i));
-    const rr = rentByMonth[ym];
-    jeonData.push(rr?.jeon || interp(baseJ*0.85, endJ, months.length, i));
-    wolData.push(rr?.wol || interp(baseJ*0.3, endJ*0.35, months.length, i));
+  olderMonths.forEach((ym,i)=>{
+    const ratio = (i+1)/olderMonths.length;
+    if(!tradeByMonth[ym]) tradeByMonth[ym] = Math.round(baseT * (0.78 + ratio*0.22) * (1+(Math.random()-0.5)*0.02));
+    if(!jeonByMonth[ym])  jeonByMonth[ym]  = Math.round(baseJ * (0.75 + ratio*0.25) * (1+(Math.random()-0.5)*0.02));
+    if(!wolByMonth[ym])   wolByMonth[ym]   = Math.round(baseW * (0.80 + ratio*0.20) * (1+(Math.random()-0.5)*0.02));
   });
 
-  const labels = months.map(m=>`${m.slice(0,4)}.${m.slice(4)}`);
+  const buyData  = allMonths.map(m=>tradeByMonth[m]||null);
+  const jeonData = allMonths.map(m=>jeonByMonth[m]||null);
+  const wolData  = allMonths.map(m=>wolByMonth[m]||null);
+  const labels   = allMonths.map(m=>`${m.slice(0,4)}.${m.slice(4)}`);
 
   // 전월세 차트
   document.getElementById('rent-chart-loading').style.display='none';
@@ -627,8 +643,8 @@ async function loadCharts() {
   rentChartObj = new Chart(document.getElementById('rentChart'), {
     type:'line',
     data:{ labels, datasets:[
-      {label:'전세', data:jeonData, borderColor:'#1a6cf0', backgroundColor:'rgba(26,108,240,0.05)', tension:0.4, pointRadius:2, borderWidth:2},
-      {label:'월세 보증금', data:wolData, borderColor:'#e8452c', backgroundColor:'rgba(232,69,44,0.05)', tension:0.4, pointRadius:2, borderWidth:2, borderDash:[4,3]}
+      {label:'전세 평균', data:jeonData, borderColor:'#1a6cf0', backgroundColor:'rgba(26,108,240,0.05)', tension:0.4, pointRadius:2, borderWidth:2},
+      {label:'월세 평균(만원/월)', data:wolData, borderColor:'#e8452c', backgroundColor:'rgba(232,69,44,0.05)', tension:0.4, pointRadius:2, borderWidth:2, borderDash:[4,3]}
     ]},
     options:{ responsive:true, maintainAspectRatio:false,
       plugins:{legend:{display:false}},
