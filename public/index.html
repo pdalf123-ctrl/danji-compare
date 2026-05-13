@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>단지比 — 아파트 실거래가 비교분석</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<script type="text/javascript" src="//dapi.kakao.com/v2/maps/sdk.js?appkey=e83f712252e8ffb368b9db36be90f89f&libraries=services,clusterer"></script>
 <style>
 * { box-sizing: border-box; margin: 0; padding: 0; }
 :root {
@@ -183,6 +184,7 @@ tr:hover td { background: #fafbff; }
     <button class="nav-link" onclick="showPage('search',this)">실거래 조회</button>
     <button class="nav-link" onclick="showPage('compare',this)">단지 비교분석</button>
     <button class="nav-link" onclick="showPage('special',this)">특수거래 감지</button>
+    <button class="nav-link" onclick="showPage('map',this)">🗺️ 실거래 지도</button>
   </div>
   <div class="nav-right">
     <button class="btn-login" onclick="openModal()">로그인</button>
@@ -398,7 +400,57 @@ tr:hover td { background: #fafbff; }
     <div id="special-loading" class="loading" style="display:none"><div class="spinner"></div>분석 중...</div>
     <div id="special-result"></div>
   </div>
+
+<!-- ───── MAP PAGE ───── -->
+<div id="page-map" class="page">
+  <div style="padding:16px 24px;max-width:960px;margin:0 auto">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+      <div>
+        <div style="font-size:15px;font-weight:700;color:#1a1a1a">실거래가 지도</div>
+        <div style="font-size:12px;color:#666;margin-top:2px">국토부 실거래가 기준 · 핀 클릭시 상세 정보 · 호가는 네이버 부동산 연결</div>
+      </div>
+      <div style="display:flex;gap:8px;align-items:center">
+        <select id="map-gu" style="padding:8px 12px;border-radius:8px;border:1px solid #ddd;font-size:13px">
+          <option value="11710">송파구</option>
+          <option value="11680">강남구</option>
+          <option value="11650">서초구</option>
+          <option value="11440">마포구</option>
+          <option value="11200">성동구</option>
+          <option value="11740">강동구</option>
+        </select>
+        <select id="map-ym" style="padding:8px 12px;border-radius:8px;border:1px solid #ddd;font-size:13px">
+          <option value="202604">2026년 4월</option>
+          <option value="202603">2026년 3월</option>
+          <option value="202602">2026년 2월</option>
+          <option value="202601">2026년 1월</option>
+        </select>
+        <button onclick="loadMap()" style="background:#1a6cf0;color:#fff;border:none;padding:8px 18px;border-radius:8px;font-size:13px;cursor:pointer">지도 조회</button>
+      </div>
+    </div>
+
+    <!-- 범례 -->
+    <div style="display:flex;gap:16px;margin-bottom:10px;flex-wrap:wrap">
+      <span style="font-size:11px;color:#666;display:flex;align-items:center;gap:4px">
+        <span style="width:12px;height:12px;background:#1a6cf0;border-radius:50%;display:inline-block"></span>정상거래
+      </span>
+      <span style="font-size:11px;color:#666;display:flex;align-items:center;gap:4px">
+        <span style="width:12px;height:12px;background:#e24b4a;border-radius:50%;display:inline-block"></span>특수거래 의심
+      </span>
+      <span style="font-size:11px;color:#666;display:flex;align-items:center;gap:4px">
+        <span style="width:12px;height:12px;background:#f5a623;border-radius:50%;display:inline-block"></span>급등 거래
+      </span>
+    </div>
+
+    <!-- 지도 -->
+    <div id="kakaomap" style="width:100%;height:500px;border-radius:12px;border:1px solid #e0e4ef;overflow:hidden;background:#f0f0f0">
+      <div style="display:flex;align-items:center;justify-content:center;height:100%;color:#999;font-size:14px">지도 조회 버튼을 클릭하세요</div>
+    </div>
+
+    <!-- 거래 목록 -->
+    <div id="map-list" style="margin-top:16px"></div>
+  </div>
 </div>
+
 
 <!-- MODAL -->
 <div class="modal-bg" id="loginModal" onclick="closeModalBg(event)">
@@ -866,6 +918,144 @@ function genAI(aName,bName,aInfo,bInfo,aAvg,bAvg,aJR,bJR){
 }
 
 // 초기 로드
+
+// ── 카카오맵 ──
+let kakaoMap = null;
+let mapMarkers = [];
+
+const GU_COORDS = {
+  '11710': { lat: 37.5145, lng: 127.1059, name: '송파구' },
+  '11680': { lat: 37.5172, lng: 127.0473, name: '강남구' },
+  '11650': { lat: 37.4837, lng: 127.0324, name: '서초구' },
+  '11440': { lat: 37.5663, lng: 126.9014, name: '마포구' },
+  '11200': { lat: 37.5634, lng: 127.0360, name: '성동구' },
+  '11740': { lat: 37.5301, lng: 127.1238, name: '강동구' },
+};
+
+function initKakaoMap(gu) {
+  const coords = GU_COORDS[gu] || GU_COORDS['11710'];
+  const container = document.getElementById('kakaomap');
+  const options = {
+    center: new kakao.maps.LatLng(coords.lat, coords.lng),
+    level: 5
+  };
+  kakaoMap = new kakao.maps.Map(container, options);
+}
+
+function clearMarkers() {
+  mapMarkers.forEach(m => m.setMap(null));
+  mapMarkers = [];
+}
+
+// 단지명으로 좌표 검색
+function searchAndMark(item, avgPrice) {
+  const ps = new kakao.maps.services.Places();
+  const query = item.aptNm + ' ' + (item.umdNm || '') + ' 아파트';
+  
+  ps.keywordSearch(query, function(result, status) {
+    if (status === kakao.maps.services.Status.OK && result.length > 0) {
+      const place = result[0];
+      const pos = new kakao.maps.LatLng(place.y, place.x);
+      const amt = toAmt(item.dealAmount);
+      const isSpecial = amt < avgPrice * 0.8;
+      const isRise = amt > avgPrice * 1.15;
+      
+      const color = isSpecial ? '#e24b4a' : isRise ? '#f5a623' : '#1a6cf0';
+      
+      const marker = new kakao.maps.Marker({
+        position: pos,
+        map: kakaoMap,
+        title: item.aptNm
+      });
+      
+      // 커스텀 오버레이 (가격 표시)
+      const overlay = new kakao.maps.CustomOverlay({
+        position: pos,
+        content: `<div style="background:${color};color:#fff;padding:3px 7px;border-radius:12px;font-size:11px;font-weight:700;white-space:nowrap;box-shadow:0 2px 6px rgba(0,0,0,0.2)">${fmtAmt(amt)}</div>`,
+        yAnchor: 2.5
+      });
+      overlay.setMap(kakaoMap);
+
+      // 클릭 이벤트
+      const naverUrl = `https://land.naver.com/article/search.naver?searchTabType=article&keyword=${encodeURIComponent(item.aptNm)}`;
+      const infoContent = `
+        <div style="padding:12px;min-width:200px;font-family:sans-serif">
+          <div style="font-size:14px;font-weight:700;margin-bottom:6px">${item.aptNm}</div>
+          <div style="font-size:12px;color:#666;margin-bottom:4px">${item.umdNm || ''} · ${item.excluUseAr || ''}㎡ · ${item.floor || ''}층</div>
+          <div style="font-size:15px;font-weight:700;color:${color};margin-bottom:8px">${fmtAmt(amt)}</div>
+          ${isSpecial ? '<div style="background:#fce8e8;color:#e24b4a;font-size:11px;padding:3px 8px;border-radius:4px;margin-bottom:8px">⚠️ 특수거래 의심</div>' : ''}
+          <div style="font-size:11px;color:#999;margin-bottom:8px">2026.${String(item.dealMonth||'').padStart(2,'0')}.${String(item.dealDay||'').padStart(2,'0')} 거래</div>
+          <a href="${naverUrl}" target="_blank" style="display:block;background:#03C75A;color:#fff;text-align:center;padding:7px;border-radius:6px;font-size:12px;text-decoration:none;font-weight:600">네이버 부동산 호가 확인 →</a>
+        </div>`;
+      
+      const infowindow = new kakao.maps.InfoWindow({ content: infoContent, removable: true });
+      
+      kakao.maps.event.addListener(marker, 'click', function() {
+        infowindow.open(kakaoMap, marker);
+      });
+
+      mapMarkers.push(marker);
+    }
+  });
+}
+
+async function loadMap() {
+  const gu = document.getElementById('map-gu').value;
+  const ym = document.getElementById('map-ym').value;
+  const btn = document.querySelector('#page-map button');
+  btn.textContent = '조회 중...';
+  btn.disabled = true;
+
+  try {
+    if (!kakaoMap) initKakaoMap(gu);
+    clearMarkers();
+
+    const trades = await fetchAPI(TRADE_URL, { LAWD_CD: gu, DEAL_YMD: ym });
+    const prices = trades.map(d => toAmt(d.dealAmount)).filter(v => v > 0);
+    const avgPrice = prices.reduce((a,b)=>a+b,0) / (prices.length||1);
+
+    // 상위 30건만 마커 표시 (과부하 방지)
+    const topTrades = trades
+      .filter(d => toAmt(d.dealAmount) > 0)
+      .sort((a,b) => parseInt(b.dealDay||0) - parseInt(a.dealDay||0))
+      .slice(0, 30);
+
+    topTrades.forEach(item => searchAndMark(item, avgPrice));
+
+    // 거래 목록
+    const listEl = document.getElementById('map-list');
+    listEl.innerHTML = `
+      <div style="font-size:13px;font-weight:700;margin-bottom:10px;color:#1a1a1a">
+        ${trades.length}건 거래 (최근 30건 지도 표시)
+        <span style="font-size:11px;font-weight:400;color:#999;margin-left:8px">평균 ${fmtAmt(Math.round(avgPrice))}</span>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:8px">
+        ${trades.slice(0,20).map(d => {
+          const amt = toAmt(d.dealAmount);
+          const isSpecial = amt < avgPrice * 0.8;
+          const naverUrl = 'https://land.naver.com/article/search.naver?searchTabType=article&keyword=' + encodeURIComponent(d.aptNm||'');
+          return `<div style="background:#fff;border:1px solid #e0e4ef;border-radius:8px;padding:10px 12px;display:flex;justify-content:space-between;align-items:center">
+            <div>
+              <div style="font-size:13px;font-weight:600;color:#1a1a1a">${d.aptNm||''} ${d.excluUseAr||''}㎡</div>
+              <div style="font-size:11px;color:#999;margin-top:2px">${d.umdNm||''} · ${d.floor||''}층 · ${String(d.dealDay||'').padStart(2,'0')}일</div>
+            </div>
+            <div style="text-align:right">
+              <div style="font-size:13px;font-weight:700;color:${isSpecial?'#e24b4a':'#1a1a1a'}">${fmtAmt(amt)}</div>
+              ${isSpecial ? '<div style="font-size:10px;color:#e24b4a">특수거래의심</div>' : ''}
+              <a href="${naverUrl}" target="_blank" style="font-size:10px;color:#03C75A;text-decoration:none">호가확인 →</a>
+            </div>
+          </div>`;
+        }).join('')}
+      </div>`;
+
+  } catch(e) {
+    document.getElementById('map-list').innerHTML = '<div style="color:#e24b4a;font-size:13px">오류: ' + e.message + '</div>';
+  }
+
+  btn.textContent = '지도 조회';
+  btn.disabled = false;
+}
+
 window.addEventListener('load', loadHome);
 </script>
 </body>
