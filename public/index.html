@@ -432,8 +432,8 @@ tr:hover td { background: #fafbff; }
 
 <script>
 const API_KEY = '323236440145e1410e54b159179e1bfbb24b98fafd58a57d0047a9b4c12dadf8';
-const TRADE_URL = 'https://apis.data.go.kr/1613000/RTMSDataSvcAptTrade/getRTMSDataSvcAptTrade';
-const RENT_URL  = 'https://apis.data.go.kr/1613000/RTMSDataSvcAptRent/getRTMSDataSvcAptRent';
+const TRADE_URL = '/api/trade';
+const RENT_URL  = '/api/rent';
 
 // 서울 주요 구 법정동 코드
 const GU_CODES = {
@@ -443,7 +443,7 @@ const GU_CODES = {
 };
 
 async function fetchAPI(url, params) {
-  const qs = new URLSearchParams({ serviceKey: API_KEY, numOfRows: 1000, pageNo: 1, ...params });
+  const qs = new URLSearchParams({ ...params });
   const res = await fetch(`${url}?${qs}`);
   const text = await res.text();
   const parser = new DOMParser();
