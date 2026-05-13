@@ -505,137 +505,56 @@ function toggleRent(mode, btn) {
   rentChartObj.update();
 }
 
-// ── 홈 데이터 로드 ──
+// ── 홈 데이터 로드 - 서버 캐시에서 가져오기 ──
 async function loadHome() {
-  // 주요 구 2026년 4월 매매 데이터 수집
-  const guList = ['11680','11650','11710'];
-  let allTrade = [], allRent = [];
+  try {
+    const res = await fetch('/api/dashboard');
+    const d = await res.json();
+    if (d.error) throw new Error(d.error);
 
-  for (const gu of guList) {
-    try {
-      const t = await fetchAPI(TRADE_URL, { LAWD_CD: gu, DEAL_YMD: '202604' });
-      allTrade = allTrade.concat(t);
-      const r = await fetchAPI(RENT_URL, { LAWD_CD: gu, DEAL_YMD: '202604' });
-      allRent = allRent.concat(r);
-    } catch(e) {}
-  }
+    // 지표 카드
+    const { jeonAvg, wolAvg, tradeCount, specialCount, jeonChg } = d.metrics;
+    document.getElementById('m-jeon').innerHTML = fmtAmt(jeonAvg) || '—';
+    document.getElementById('m-jeon-chg').textContent = jeonChg > 0 ? `▲ ${jeonChg}% 전월 대비` : jeonChg < 0 ? `▼ ${Math.abs(jeonChg)}% 전월 대비` : '전월 대비';
+    document.getElementById('m-jeon-chg').className = 'metric-chg ' + (jeonChg >= 0 ? 'up' : 'dn');
+    document.getElementById('m-wol').innerHTML = wolAvg ? wolAvg.toLocaleString() + '만원/월' : '—';
+    document.getElementById('m-wol-chg').textContent = `월세 평균`;
+    document.getElementById('m-trade').innerHTML = tradeCount + '<span style="font-size:13px;color:var(--text2)">건</span>';
+    document.getElementById('m-special').innerHTML = specialCount + '<span style="font-size:13px;color:var(--text2)">건</span>';
 
-  // 거래량
-  document.getElementById('m-trade').innerHTML = allTrade.length + '<span style="font-size:13px;color:var(--text2)">건</span>';
-
-  // 특수거래 의심 (전체 평균 대비 -20%)
-  const prices = allTrade.map(d=>toAmt(d.dealAmount)).filter(v=>v>0);
-  const avgPrice = prices.reduce((a,b)=>a+b,0)/(prices.length||1);
-  const specialCount = prices.filter(p=>p < avgPrice*0.8).length;
-  document.getElementById('m-special').innerHTML = specialCount + '<span style="font-size:13px;color:var(--text2)">건</span>';
-
-  // 전세 평균
-  const jeonAmts = allRent.filter(d=>!d.monthlyRent||d.monthlyRent==='0').map(d=>toAmt(d.deposit)).filter(v=>v>1000);
-  const wolAmts  = allRent.filter(d=>d.monthlyRent&&d.monthlyRent!=='0').map(d=>toAmt(d.monthlyRent)).filter(v=>v>0);
-  if(jeonAmts.length) {
-    const avg = Math.round(jeonAmts.reduce((a,b)=>a+b,0)/jeonAmts.length);
-    document.getElementById('m-jeon').innerHTML = fmtAmt(avg);
-    document.getElementById('m-jeon-chg').textContent = `${jeonAmts.length}건 평균`;
-  }
-  if(wolAmts.length) {
-    const avg = Math.round(wolAmts.reduce((a,b)=>a+b,0)/wolAmts.length);
-    document.getElementById('m-wol').innerHTML = avg.toLocaleString() + '만원/월';
-    document.getElementById('m-wol-chg').textContent = `${wolAmts.length}건 평균`;
-  }
-
-  // 피드 (최신 10건 정상거래)
-  const feed = allTrade
-    .filter(d=>toAmt(d.dealAmount) > avgPrice*0.8)
-    .sort((a,b)=>parseInt(b.dealDay||0)-parseInt(a.dealDay||0))
-    .slice(0,8);
-
-  const feedEl = document.getElementById('feed-list');
-  document.getElementById('feed-loading').style.display='none';
-  feedEl.style.display='flex';
-  if(feed.length===0){
-    feedEl.innerHTML='<div style="text-align:center;padding:20px;color:var(--text2);font-size:13px">데이터를 불러오는 중입니다...</div>';
-  } else {
-    feedEl.innerHTML = feed.map(d=>{
-      const amt = toAmt(d.dealAmount);
-      const isRise = amt > avgPrice * 1.1;
+    // 피드
+    const feedEl = document.getElementById('feed-list');
+    document.getElementById('feed-loading').style.display = 'none';
+    feedEl.style.display = 'flex';
+    const allPrices = d.feed.map(x => toAmt(x.dealAmount)).filter(v => v > 0);
+    const avgP = allPrices.reduce((a,b)=>a+b,0) / (allPrices.length||1);
+    feedEl.innerHTML = d.feed.map(x => {
+      const amt = toAmt(x.dealAmount);
+      const isRise = amt > avgP * 1.1;
       return `<div class="feed-item">
         <div class="feed-icon ${isRise?'rise':'normal'}">${isRise?'📈':'🏠'}</div>
         <div class="feed-body">
-          <div class="feed-name">${d.aptNm||''} ${d.excluUseAr||''}㎡${isRise?'<span class="tag-rise">상승</span>':''}</div>
-          <div class="feed-detail">${d.umdNm||''} · ${d.floor||''}층 · 2026.04.${String(d.dealDay||'').padStart(2,'0')}</div>
+          <div class="feed-name">${x.aptNm||''} ${x.excluUseAr||''}㎡${isRise?'<span class="tag-rise">상승</span>':''}</div>
+          <div class="feed-detail">${x.umdNm||''} · ${x.floor||''}층 · ${(x.ym||'').slice(0,4)}.${(x.ym||'').slice(4)}.${String(x.dealDay||'').padStart(2,'0')}</div>
         </div>
         <div class="feed-price" style="color:${isRise?'var(--warn)':'var(--text1)'}">${fmtAmt(amt)}</div>
       </div>`;
     }).join('');
-  }
 
-  // 그래프 데이터 (3년치 — 구별 월별 수집)
-  await loadCharts();
+    // 차트
+    await drawCharts(d.charts);
+  } catch(e) {
+    console.error('홈 로딩 오류:', e);
+    document.getElementById('feed-loading').innerHTML = '데이터 로드 실패: ' + e.message;
+  }
 }
 
-async function loadCharts() {
-  // 2023.05~2026.05 월별 레이블 (실제 API 호출)
-  // 부하 줄이기 위해 강남+송파+서초 3개 구, 12개월씩 2회 호출
-  const recentMonths = [];
-  for(let y=2025;y<=2026;y++){
-    for(let m=1;m<=12;m++){
-      if(y===2025&&m<5) continue;
-      if(y===2026&&m>5) break;
-      recentMonths.push(`${y}${String(m).padStart(2,'0')}`);
-    }
-  }
-  const olderMonths = [];
-  for(let y=2023;y<=2025;y++){
-    for(let m=1;m<=12;m++){
-      if(y===2023&&m<5) continue;
-      if(y===2025&&m>4) break;
-      olderMonths.push(`${y}${String(m).padStart(2,'0')}`);
-    }
-  }
-  const allMonths = [...olderMonths, ...recentMonths];
-  const guList = ['11710','11680','11650']; // 송파, 강남, 서초
-
-  const tradeByMonth = {}, jeonByMonth = {}, wolByMonth = {};
-
-  // 실제 API 호출 (최근 13개월만 — 과부하 방지)
-  for(const ym of recentMonths){
-    let tAmts=[], jAmts=[], wAmts=[];
-    for(const gu of guList){
-      try {
-        const t = await fetchAPI(TRADE_URL, {LAWD_CD:gu, DEAL_YMD:ym});
-        t.forEach(d=>{ const v=toAmt(d.dealAmount); if(v>1000) tAmts.push(v); });
-        const r = await fetchAPI(RENT_URL, {LAWD_CD:gu, DEAL_YMD:ym});
-        r.forEach(d=>{
-          const dep=toAmt(d.deposit);
-          if(!d.monthlyRent||d.monthlyRent==='0'){ if(dep>1000) jAmts.push(dep); }
-          else { const wol=toAmt(d.monthlyRent); if(wol>0) wAmts.push(wol); }
-        });
-      } catch(e){}
-    }
-    if(tAmts.length) tradeByMonth[ym] = Math.round(tAmts.reduce((a,b)=>a+b,0)/tAmts.length);
-    if(jAmts.length) jeonByMonth[ym]  = Math.round(jAmts.reduce((a,b)=>a+b,0)/jAmts.length);
-    if(wAmts.length) wolByMonth[ym]   = Math.round(wAmts.reduce((a,b)=>a+b,0)/wAmts.length);
-  }
-
-  // 오래된 구간은 최근값 기준으로 역산 추세 (보간이지만 단위 정확)
-  const recentT = recentMonths.map(m=>tradeByMonth[m]).filter(Boolean);
-  const recentJ = recentMonths.map(m=>jeonByMonth[m]).filter(Boolean);
-  const recentW = recentMonths.map(m=>wolByMonth[m]).filter(Boolean);
-  const baseT = recentT[0] || 130000; // 만원 단위 기본값 (약 13억)
-  const baseJ = recentJ[0] || 60000;  // 전세 약 6억
-  const baseW = recentW[0] || 90;     // 월세 약 90만원
-
-  olderMonths.forEach((ym,i)=>{
-    const ratio = (i+1)/olderMonths.length;
-    if(!tradeByMonth[ym]) tradeByMonth[ym] = Math.round(baseT * (0.78 + ratio*0.22) * (1+(Math.random()-0.5)*0.02));
-    if(!jeonByMonth[ym])  jeonByMonth[ym]  = Math.round(baseJ * (0.75 + ratio*0.25) * (1+(Math.random()-0.5)*0.02));
-    if(!wolByMonth[ym])   wolByMonth[ym]   = Math.round(baseW * (0.80 + ratio*0.20) * (1+(Math.random()-0.5)*0.02));
-  });
-
-  const buyData  = allMonths.map(m=>tradeByMonth[m]||null);
-  const jeonData = allMonths.map(m=>jeonByMonth[m]||null);
-  const wolData  = allMonths.map(m=>wolByMonth[m]||null);
-  const labels   = allMonths.map(m=>`${m.slice(0,4)}.${m.slice(4)}`);
+async function drawCharts(charts) {
+  const { tradeByMonth, jeonByMonth, wolByMonth, months } = charts;
+  const labels   = months.map(m => `${m.slice(0,4)}.${m.slice(4)}`);
+  const buyData  = months.map(m => tradeByMonth[m] || null);
+  const jeonData = months.map(m => jeonByMonth[m]  || null);
+  const wolData  = months.map(m => wolByMonth[m]   || null);
 
   // 전월세 차트
   document.getElementById('rent-chart-loading').style.display='none';
