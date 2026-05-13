@@ -7,7 +7,7 @@ const app = express();
 app.use(cors());
 app.use(express.static(path.join(__dirname, 'public')));
 
-const API_KEY = decodeURIComponent('323236440145e1410e54b159179e1bfbb24b98fafd58a57d0047a9b4c12dadf8');
+const API_KEY = '323236440145e1410e54b159179e1bfbb24b98fafd58a57d0047a9b4c12dadf8';
 const TRADE_URL = 'https://apis.data.go.kr/1613000/RTMSDataSvcAptTrade/getRTMSDataSvcAptTrade';
 const RENT_URL  = 'https://apis.data.go.kr/1613000/RTMSDataSvcAptRent/getRTMSDataSvcAptRent';
 
@@ -18,73 +18,60 @@ function isCacheValid(key) {
   return cache[key] && (Date.now() - cache[key].timestamp < CACHE_TTL);
 }
 
-async function fetchFromAPI(url, params) {
-  const res = await axios.get(url, {
-    params: { serviceKey: API_KEY, numOfRows: 1000, pageNo: 1, ...params },
-    responseType: 'text'
-  });
-  return res.data;
-}
-
-function parseXML(xmlStr) {
-  const items = [];
-  if (!xmlStr || typeof xmlStr !== 'string') return items;
-  const itemMatches = xmlStr.match(/<item>([\s\S]*?)<\/item>/g) || [];
-  itemMatches.forEach(item => {
-    const obj = {};
-    const tagRegex = /<([a-zA-Z_][a-zA-Z0-9_]*)(?:\s[^>]*)?>([^<]*)<\/\1>/g;
-    let match;
-    while ((match = tagRegex.exec(item)) !== null) {
-      obj[match[1]] = match[2].trim();
-    }
-    if (Object.keys(obj).length > 0) items.push(obj);
-  });
-  return items;
-}
-
 function toAmt(str) {
-  if (!str) return 0;
+  if (!str && str !== 0) return 0;
   return parseInt(String(str).replace(/,/g, '').replace(/\s/g, '')) || 0;
 }
 
-// 매매 API
+async function fetchItems(url, params) {
+  const res = await axios.get(url, {
+    params: { serviceKey: API_KEY, numOfRows: 1000, pageNo: 1, _type: 'json', ...params }
+  });
+  const body = res.data?.response?.body;
+  if (!body) return [];
+  const items = body.items?.item;
+  if (!items) return [];
+  return Array.isArray(items) ? items : [items];
+}
+
+// 매매 API (개별 조회용 - JSON 반환)
 app.get('/api/trade', async (req, res) => {
   try {
     const { LAWD_CD, DEAL_YMD } = req.query;
     const key = `trade_${LAWD_CD}_${DEAL_YMD}`;
     if (!isCacheValid(key)) {
-      const data = await fetchFromAPI(TRADE_URL, { LAWD_CD, DEAL_YMD });
-      cache[key] = { data, timestamp: Date.now() };
+      const items = await fetchItems(TRADE_URL, { LAWD_CD, DEAL_YMD });
+      cache[key] = { data: items, timestamp: Date.now() };
     }
-    res.set('Content-Type', 'application/xml; charset=utf-8');
-    res.send(cache[key].data);
+    res.json(cache[key].data);
   } catch (e) {
+    console.error('매매 API 오류:', e.message);
     res.status(500).json({ error: e.message });
   }
 });
 
-// 전월세 API
+// 전월세 API (개별 조회용 - JSON 반환)
 app.get('/api/rent', async (req, res) => {
   try {
     const { LAWD_CD, DEAL_YMD } = req.query;
     const key = `rent_${LAWD_CD}_${DEAL_YMD}`;
     if (!isCacheValid(key)) {
-      const data = await fetchFromAPI(RENT_URL, { LAWD_CD, DEAL_YMD });
-      cache[key] = { data, timestamp: Date.now() };
+      const items = await fetchItems(RENT_URL, { LAWD_CD, DEAL_YMD });
+      cache[key] = { data: items, timestamp: Date.now() };
     }
-    res.set('Content-Type', 'application/xml; charset=utf-8');
-    res.send(cache[key].data);
+    res.json(cache[key].data);
   } catch (e) {
+    console.error('전월세 API 오류:', e.message);
     res.status(500).json({ error: e.message });
   }
 });
 
-// 대시보드 API
+// 대시보드 API - 서버에서 집계 후 반환
 app.get('/api/dashboard', async (req, res) => {
   try {
     const key = 'dashboard';
     if (isCacheValid(key)) {
-      console.log('캐시에서 대시보드 데이터 반환');
+      console.log('캐시에서 대시보드 반환');
       return res.json(cache[key].data);
     }
 
@@ -106,9 +93,7 @@ app.get('/api/dashboard', async (req, res) => {
       let tAmts = [], jAmts = [], wAmts = [];
       for (const gu of guList) {
         try {
-          const tData = await fetchFromAPI(TRADE_URL, { LAWD_CD: gu, DEAL_YMD: ym });
-          const tItems = parseXML(tData);
-          console.log(`${ym} ${gu} 매매 ${tItems.length}건`);
+          const tItems = await fetchItems(TRADE_URL, { LAWD_CD: gu, DEAL_YMD: ym });
           tItems.forEach(d => {
             const v = toAmt(d.dealAmount);
             if (v > 1000) {
@@ -116,27 +101,26 @@ app.get('/api/dashboard', async (req, res) => {
               if (ym >= '202604') latestTrades.push({ ...d, ym });
             }
           });
-        } catch (e) { console.log(`매매 오류 ${ym} ${gu}:`, e.message); }
+        } catch(e) { console.log(`매매 오류 ${ym} ${gu}:`, e.message); }
 
         try {
-          const rData = await fetchFromAPI(RENT_URL, { LAWD_CD: gu, DEAL_YMD: ym });
-          const rItems = parseXML(rData);
+          const rItems = await fetchItems(RENT_URL, { LAWD_CD: gu, DEAL_YMD: ym });
           rItems.forEach(d => {
             const dep = toAmt(d.deposit);
-            if (!d.monthlyRent || d.monthlyRent === '0') {
+            const wol = toAmt(d.monthlyRent);
+            if (!wol || wol === 0) {
               if (dep > 1000) jAmts.push(dep);
             } else {
-              const wol = toAmt(d.monthlyRent);
               if (wol > 0) wAmts.push(wol);
             }
           });
-        } catch (e) { console.log(`전월세 오류 ${ym} ${gu}:`, e.message); }
+        } catch(e) { console.log(`전월세 오류 ${ym} ${gu}:`, e.message); }
       }
 
       if (tAmts.length) tradeByMonth[ym] = Math.round(tAmts.reduce((a,b)=>a+b,0)/tAmts.length);
       if (jAmts.length) jeonByMonth[ym]  = Math.round(jAmts.reduce((a,b)=>a+b,0)/jAmts.length);
       if (wAmts.length) wolByMonth[ym]   = Math.round(wAmts.reduce((a,b)=>a+b,0)/wAmts.length);
-      console.log(`${ym} 처리완료 - 매매평균:${tradeByMonth[ym]||0}만, 전세평균:${jeonByMonth[ym]||0}만, 월세평균:${wolByMonth[ym]||0}만`);
+      console.log(`${ym} 완료 - 매매:${tradeByMonth[ym]||0}만원 전세:${jeonByMonth[ym]||0}만원 월세:${wolByMonth[ym]||0}만원`);
     }
 
     latestTrades.sort((a,b) => parseInt(b.dealDay||0) - parseInt(a.dealDay||0));
@@ -158,7 +142,7 @@ app.get('/api/dashboard', async (req, res) => {
     };
 
     cache[key] = { data: result, timestamp: Date.now() };
-    console.log('대시보드 데이터 캐싱 완료!');
+    console.log('대시보드 캐싱 완료!');
     res.json(result);
   } catch (e) {
     console.error('대시보드 오류:', e.message);
