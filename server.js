@@ -2,343 +2,302 @@ const express = require('express');
 const axios = require('axios');
 const cors = require('cors');
 const path = require('path');
+const fs = require('fs');
 
 const app = express();
+const PORT = process.env.PORT || 3000;
+
 app.use(cors());
-app.use(express.json());
+app.use(express.json({ limit: '2mb' }));
 app.use(express.static(path.join(__dirname, 'public')));
 
-const API_KEY = '323236440145e1410e54b159179e1bfbb24b98fafd58a57d0047a9b4c12dadf8';
-const KAKAO_REST_KEY = 'e83f712252e8ffb368b9db36be90f89f';
-const TRADE_URL = 'https://apis.data.go.kr/1613000/RTMSDataSvcAptTrade/getRTMSDataSvcAptTrade';
-const RENT_URL  = 'https://apis.data.go.kr/1613000/RTMSDataSvcAptRent/getRTMSDataSvcAptRent';
+const KAKAO_REST_KEY = process.env.KAKAO_REST_KEY || '';
+const KAKAO_JS_KEY = process.env.KAKAO_JS_KEY || '';
+const CACHE_FILE = path.join(__dirname, 'data', 'apartments-cache.json');
+const CACHE_TTL_MS = 1000 * 60 * 60 * 24 * 7;
 
-const cache = {};
-const CACHE_TTL = 1000 * 60 * 60 * 24;
-function isCacheValid(key) { return cache[key] && (Date.now() - cache[key].timestamp < CACHE_TTL); }
-
-function toAmt(str) {
-  if (!str && str !== 0) return 0;
-  return parseInt(String(str).replace(/,/g, '').replace(/\s/g, '')) || 0;
-}
-
-async function fetchItems(url, LAWD_CD, DEAL_YMD) {
-  const fullUrl = `${url}?serviceKey=${API_KEY}&numOfRows=1000&pageNo=1&_type=json&LAWD_CD=${LAWD_CD}&DEAL_YMD=${DEAL_YMD}`;
-  const res = await axios.get(fullUrl);
-  const body = res.data?.response?.body;
-  if (!body) return [];
-  const items = body.items?.item;
-  if (!items) return [];
-  return Array.isArray(items) ? items : [items];
-}
-
-// 서울 25개 구 법정동 코드 + 중심 좌표
 const GU_LIST = [
-  {name:'강남구', lawdCd:'11680', lat:37.5172, lng:127.0473},
-  {name:'강동구', lawdCd:'11740', lat:37.5301, lng:127.1238},
-  {name:'강북구', lawdCd:'11305', lat:37.6396, lng:127.0257},
-  {name:'강서구', lawdCd:'11500', lat:37.5509, lng:126.8495},
-  {name:'관악구', lawdCd:'11620', lat:37.4784, lng:126.9516},
-  {name:'광진구', lawdCd:'11215', lat:37.5385, lng:127.0823},
-  {name:'구로구', lawdCd:'11530', lat:37.4954, lng:126.8875},
-  {name:'금천구', lawdCd:'11545', lat:37.4569, lng:126.8956},
-  {name:'노원구', lawdCd:'11350', lat:37.6541, lng:127.0568},
-  {name:'도봉구', lawdCd:'11320', lat:37.6688, lng:127.0471},
-  {name:'동대문구',lawdCd:'11230', lat:37.5744, lng:127.0397},
-  {name:'동작구', lawdCd:'11590', lat:37.5124, lng:126.9393},
-  {name:'마포구', lawdCd:'11440', lat:37.5663, lng:126.9014},
-  {name:'서대문구',lawdCd:'11410', lat:37.5791, lng:126.9368},
-  {name:'서초구', lawdCd:'11650', lat:37.4837, lng:127.0324},
-  {name:'성동구', lawdCd:'11200', lat:37.5634, lng:127.0360},
-  {name:'성북구', lawdCd:'11290', lat:37.5894, lng:127.0167},
-  {name:'송파구', lawdCd:'11710', lat:37.5145, lng:127.1059},
-  {name:'양천구', lawdCd:'11470', lat:37.5170, lng:126.8666},
-  {name:'영등포구',lawdCd:'11560', lat:37.5264, lng:126.8962},
-  {name:'용산구', lawdCd:'11170', lat:37.5384, lng:126.9654},
-  {name:'은평구', lawdCd:'11380', lat:37.6027, lng:126.9291},
-  {name:'종로구', lawdCd:'11110', lat:37.5726, lng:126.9788},
-  {name:'중구',   lawdCd:'11140', lat:37.5636, lng:126.9976},
-  {name:'중랑구', lawdCd:'11260', lat:37.5953, lng:127.0939},
+  { name: '강남구', lawdCd: '11680', lat: 37.5172, lng: 127.0473 },
+  { name: '강동구', lawdCd: '11740', lat: 37.5301, lng: 127.1238 },
+  { name: '강북구', lawdCd: '11305', lat: 37.6396, lng: 127.0257 },
+  { name: '강서구', lawdCd: '11500', lat: 37.5509, lng: 126.8495 },
+  { name: '관악구', lawdCd: '11620', lat: 37.4784, lng: 126.9516 },
+  { name: '광진구', lawdCd: '11215', lat: 37.5385, lng: 127.0823 },
+  { name: '구로구', lawdCd: '11530', lat: 37.4954, lng: 126.8875 },
+  { name: '금천구', lawdCd: '11545', lat: 37.4569, lng: 126.8956 },
+  { name: '노원구', lawdCd: '11350', lat: 37.6541, lng: 127.0568 },
+  { name: '도봉구', lawdCd: '11320', lat: 37.6688, lng: 127.0471 },
+  { name: '동대문구', lawdCd: '11230', lat: 37.5744, lng: 127.0397 },
+  { name: '동작구', lawdCd: '11590', lat: 37.5124, lng: 126.9393 },
+  { name: '마포구', lawdCd: '11440', lat: 37.5663, lng: 126.9014 },
+  { name: '서대문구', lawdCd: '11410', lat: 37.5791, lng: 126.9368 },
+  { name: '서초구', lawdCd: '11650', lat: 37.4837, lng: 127.0324 },
+  { name: '성동구', lawdCd: '11200', lat: 37.5634, lng: 127.0360 },
+  { name: '성북구', lawdCd: '11290', lat: 37.5894, lng: 127.0167 },
+  { name: '송파구', lawdCd: '11710', lat: 37.5145, lng: 127.1059 },
+  { name: '양천구', lawdCd: '11470', lat: 37.5170, lng: 126.8666 },
+  { name: '영등포구', lawdCd: '11560', lat: 37.5264, lng: 126.8962 },
+  { name: '용산구', lawdCd: '11170', lat: 37.5384, lng: 126.9654 },
+  { name: '은평구', lawdCd: '11380', lat: 37.6027, lng: 126.9291 },
+  { name: '종로구', lawdCd: '11110', lat: 37.5726, lng: 126.9788 },
+  { name: '중구', lawdCd: '11140', lat: 37.5636, lng: 126.9976 },
+  { name: '중랑구', lawdCd: '11260', lat: 37.5953, lng: 127.0939 }
 ];
 
-// 강남 접근성 점수 (강남구청 기준 거리)
+const SEARCH_KEYWORDS = [
+  '아파트', '래미안', '자이', '푸르지오', '힐스테이트', '아이파크', '롯데캐슬', '더샵',
+  'e편한세상', '이편한세상', '두산위브', '센트레빌', '주공아파트', '현대아파트', '한양아파트',
+  '삼성아파트', '벽산아파트', '우성아파트', '파크', '타워'
+];
+
+const BRAND_WORDS = ['래미안','자이','푸르지오','힐스테이트','아이파크','롯데캐슬','더샵','e편한세상','이편한세상','두산위브','센트레빌','주공','현대','한양','삼성','벽산','우성','파크','타워','아파트'];
+const EXCLUDE_WORDS = ['관리사무소','상가','입주자대표','노인정','경로당','어린이집','주차장','공인중개사','모델하우스','분양사무소','홍보관','오피스텔','빌라','원룸','하우스'];
 const GANGNAM_ACCESS = {
-  '강남구':10,'서초구':9,'송파구':8,'강동구':6,'성동구':7,
-  '광진구':6,'용산구':7,'동작구':6,'영등포구':5,'마포구':5,
-  '양천구':4,'강서구':3,'구로구':4,'금천구':3,'관악구':5,
-  '동대문구':5,'중구':6,'종로구':6,'성북구':4,'강북구':3,
-  '도봉구':2,'노원구':3,'중랑구':4,'서대문구':4,'은평구':3,
+  '강남구': 10, '서초구': 9, '송파구': 8, '성동구': 7, '용산구': 7, '강동구': 6,
+  '광진구': 6, '동작구': 6, '중구': 6, '종로구': 6, '마포구': 5, '관악구': 5,
+  '영등포구': 5, '동대문구': 5, '양천구': 4, '구로구': 4, '성북구': 4, '중랑구': 4,
+  '서대문구': 4, '강서구': 3, '금천구': 3, '노원구': 3, '강북구': 3, '은평구': 3, '도봉구': 2
 };
 
-// 카카오 장소 검색으로 아파트 단지 수집
-async function fetchApartmentsFromKakao(gu) {
-  const apts = [];
-  const seen = new Set();
-  // 페이지별로 검색 (최대 5페이지 = 45개)
-  for (let page = 1; page <= 5; page++) {
-    try {
-      const res = await axios.get('https://dapi.kakao.com/v2/local/search/keyword.json', {
-        headers: { Authorization: `KakaoAK ${KAKAO_REST_KEY}` },
-        params: {
-          query: `${gu.name} 아파트`,
-          category_group_code: 'SW8',
-          x: gu.lng, y: gu.lat,
-          radius: 5000,
-          size: 15,
-          page,
-          sort: 'accuracy'
-        }
-      });
-      const items = res.data.documents || [];
-      if (items.length === 0) break;
-      items.forEach(item => {
-        const name = item.place_name.replace(/\s*아파트\s*$/, '').trim();
-        if (seen.has(name)) return;
-        seen.add(name);
-        // 아파트 키워드 필터
-        if (!item.place_name.includes('아파트') && !item.place_name.includes('타워') && 
-            !item.place_name.includes('파크') && !item.place_name.includes('힐스테이트') &&
-            !item.place_name.includes('래미안') && !item.place_name.includes('자이') &&
-            !item.place_name.includes('푸르지오') && !item.place_name.includes('e편한')) return;
-        apts.push({
-          id: `${gu.lawdCd}_${name}`,
-          name,
-          gu: gu.name,
-          dong: item.address_name.split(' ').slice(2).join(' ') || '',
-          lawdCd: gu.lawdCd,
-          lat: parseFloat(item.y),
-          lng: parseFloat(item.x),
-          address: item.address_name,
-          gangnamScore: GANGNAM_ACCESS[gu.name] || 5,
-          // 기본값 (실거래가 조회 후 업데이트)
-          세대수: 0, 준공: 0, 특징: '', 대단지: false,
-          역: '', 초: '', 점수: GANGNAM_ACCESS[gu.name] * 5 || 50,
-        });
-      });
-      if (res.data.meta?.is_end) break;
-    } catch(e) { break; }
-  }
-  return apts;
-}
-
-// 전체 서울 아파트 DB 구축 (서버 시작 시 1회)
 let apartmentDB = [];
-let dbBuilding = false;
+let dbStatus = { building: false, builtAt: null, error: null, count: 0 };
+const analysisCache = new Map();
 
-async function buildApartmentDB() {
-  if (dbBuilding) return;
-  dbBuilding = true;
-  console.log('아파트 DB 구축 시작...');
-  
-  // 기본 DB 먼저 로드
-  try {
-    const base = require('./apartments');
-    apartmentDB = [...base];
-    console.log(`기본 DB: ${apartmentDB.length}개`);
-  } catch(e) {
-    apartmentDB = [];
-  }
-
-  // 카카오 API로 추가 수집
-  for (const gu of GU_LIST) {
-    try {
-      const apts = await fetchApartmentsFromKakao(gu);
-      // 기존 DB에 없는 것만 추가
-      const existingNames = new Set(apartmentDB.map(a => a.name));
-      const newApts = apts.filter(a => !existingNames.has(a.name));
-      apartmentDB = [...apartmentDB, ...newApts];
-      console.log(`${gu.name} +${newApts.length}개 추가 (총 ${apartmentDB.length}개)`);
-      await new Promise(r => setTimeout(r, 200)); // API 과부하 방지
-    } catch(e) {
-      console.log(`${gu.name} 수집 실패:`, e.message);
-    }
-  }
-  
-  console.log(`아파트 DB 구축 완료: 총 ${apartmentDB.length}개`);
-  dbBuilding = false;
+function sleep(ms) { return new Promise(resolve => setTimeout(resolve, ms)); }
+function normalizeName(name = '') {
+  return String(name)
+    .replace(/\([^)]*\)/g, '')
+    .replace(/\s*아파트\s*$/g, '')
+    .replace(/\s+/g, '')
+    .trim();
 }
-
-// 동일 컨디션 유사 단지 찾기
-function findSimilarApts(targetApt, targetPrice, count = 8) {
-  return apartmentDB
-    .filter(a => a.id !== targetApt.id)
-    .map(a => {
-      let score = 0;
-      // 강남 접근성 유사도
-      const gangnamDiff = Math.abs((a.gangnamScore||5) - (targetApt.gangnamScore||5));
-      score += (10 - gangnamDiff) * 3;
-      // 초품아 동일
-      const aSchool = (a.초||'').includes('초품아') || (a.특징||'').includes('초품아');
-      const tSchool = (targetApt.초||'').includes('초품아') || (targetApt.특징||'').includes('초품아');
-      if (aSchool === tSchool) score += 20;
-      // 역세권 동일
-      const aSubway = a.역 && parseInt(a.역) <= 5;
-      const tSubway = targetApt.역 && parseInt(targetApt.역) <= 5;
-      if (aSubway === tSubway) score += 15;
-      // 대단지 동일
-      if (a.대단지 === targetApt.대단지) score += 10;
-      // 같은 구 가중치
-      if (a.gu === targetApt.gu) score += 5;
-      // 가격 유사도 (있을 경우)
-      if (a.latestPrice && targetPrice) {
-        const priceDiff = Math.abs(a.latestPrice - targetPrice) / targetPrice;
-        if (priceDiff < 0.2) score += 20;
-        else if (priceDiff < 0.4) score += 10;
-      }
-      return { ...a, similarScore: score };
-    })
-    .sort((a, b) => b.similarScore - a.similarScore)
-    .slice(0, count);
+function cleanName(name = '') {
+  return String(name)
+    .replace(/\([^)]*\)/g, '')
+    .replace(/관리사무소|입주자대표회의|상가/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
 }
-
-// API 라우트들
-
-app.get('/api/apartments', (req, res) => {
-  res.json(apartmentDB);
-});
-
-app.get('/api/similar', async (req, res) => {
+function haversineKm(a, b) {
+  const R = 6371;
+  const dLat = (b.lat - a.lat) * Math.PI / 180;
+  const dLng = (b.lng - a.lng) * Math.PI / 180;
+  const lat1 = a.lat * Math.PI / 180;
+  const lat2 = b.lat * Math.PI / 180;
+  const x = Math.sin(dLat / 2) ** 2 + Math.sin(dLng / 2) ** 2 * Math.cos(lat1) * Math.cos(lat2);
+  return 2 * R * Math.asin(Math.sqrt(x));
+}
+function looksLikeApartment(placeName = '') {
+  const name = String(placeName);
+  if (EXCLUDE_WORDS.some(w => name.includes(w))) return false;
+  return BRAND_WORDS.some(w => name.includes(w));
+}
+function parseDong(address = '') {
+  const parts = String(address).split(' ');
+  return parts.find(p => /동$|가$/.test(p)) || parts.slice(2, 4).join(' ');
+}
+function loadCache() {
   try {
-    const { aptId, price } = req.query;
-    const target = apartmentDB.find(a => a.id === aptId);
-    if (!target) return res.json([]);
-    const similar = findSimilarApts(target, parseInt(price) || 0);
-    // 유사 단지들의 최근 실거래가 조회
-    const result = await Promise.all(similar.map(async apt => {
+    if (!fs.existsSync(CACHE_FILE)) return false;
+    const raw = JSON.parse(fs.readFileSync(CACHE_FILE, 'utf8'));
+    const isFresh = raw.builtAt && Date.now() - new Date(raw.builtAt).getTime() < CACHE_TTL_MS;
+    if (!isFresh || !Array.isArray(raw.apartments)) return false;
+    apartmentDB = raw.apartments;
+    dbStatus = { building: false, builtAt: raw.builtAt, error: null, count: apartmentDB.length };
+    return true;
+  } catch (e) { return false; }
+}
+function saveCache() {
+  fs.mkdirSync(path.dirname(CACHE_FILE), { recursive: true });
+  fs.writeFileSync(CACHE_FILE, JSON.stringify({ builtAt: new Date().toISOString(), apartments: apartmentDB }, null, 2));
+}
+async function kakaoKeywordSearch(query, options = {}) {
+  if (!KAKAO_REST_KEY) throw new Error('KAKAO_REST_KEY 환경변수가 필요합니다.');
+  const res = await axios.get('https://dapi.kakao.com/v2/local/search/keyword.json', {
+    headers: { Authorization: `KakaoAK ${KAKAO_REST_KEY}` },
+    params: { query, size: 15, ...options },
+    timeout: 9000
+  });
+  return res.data;
+}
+async function fetchApartmentsForGu(gu, maxPagesPerKeyword = 3) {
+  const found = [];
+  const seen = new Set();
+  for (const keyword of SEARCH_KEYWORDS) {
+    for (let page = 1; page <= maxPagesPerKeyword; page++) {
       try {
-        const now = new Date();
-        for (let i = 0; i < 2; i++) {
-          const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
-          const ym = `${d.getFullYear()}${String(d.getMonth()+1).padStart(2,'0')}`;
-          const key = `trade_${apt.lawdCd}_${ym}`;
-          let items;
-          if (isCacheValid(key)) { items = cache[key].data; }
-          else { items = await fetchItems(TRADE_URL, apt.lawdCd, ym); cache[key] = { data: items, timestamp: Date.now() }; }
-          const found = items.filter(d => (d.aptNm||'').includes(apt.name.slice(0,4)));
-          if (found.length > 0) {
-            const prices = found.map(d => toAmt(d.dealAmount)).filter(v => v > 0);
-            const avg = prices.length ? Math.round(prices.reduce((a,b)=>a+b,0)/prices.length) : 0;
-            return { ...apt, latestPrice: avg, priceCount: found.length };
-          }
+        const data = await kakaoKeywordSearch(`${gu.name} ${keyword}`, {
+          x: gu.lng, y: gu.lat, radius: 20000, page, sort: 'accuracy'
+        });
+        const docs = data.documents || [];
+        if (!docs.length) break;
+        for (const item of docs) {
+          const place = item.place_name || '';
+          const address = item.road_address_name || item.address_name || '';
+          if (!address.includes('서울')) continue;
+          if (!address.includes(gu.name) && !(item.address_name || '').includes(gu.name)) continue;
+          if (!looksLikeApartment(place)) continue;
+          const name = cleanName(place);
+          const key = `${gu.name}:${normalizeName(name)}:${Math.round(Number(item.y) * 10000)}:${Math.round(Number(item.x) * 10000)}`;
+          const nameKey = `${gu.name}:${normalizeName(name)}`;
+          if (seen.has(key) || seen.has(nameKey)) continue;
+          seen.add(key); seen.add(nameKey);
+          const lat = Number(item.y), lng = Number(item.x);
+          if (!lat || !lng) continue;
+          found.push({
+            id: `${gu.lawdCd}_${normalizeName(name)}_${found.length + 1}`,
+            name,
+            gu: gu.name,
+            lawdCd: gu.lawdCd,
+            dong: parseDong(address),
+            address,
+            lat, lng,
+            source: 'kakao',
+            gangnamScore: GANGNAM_ACCESS[gu.name] || 5,
+            tags: [],
+            subway: null,
+            school: null,
+            households: null,
+            builtYear: null
+          });
         }
-        return apt;
-      } catch(e) { return apt; }
-    }));
-    res.json(result);
-  } catch(e) {
-    res.status(500).json({ error: e.message });
-  }
-});
-
-app.get('/api/apt-price', async (req, res) => {
-  try {
-    const { lawdCd, aptNm } = req.query;
-    let found = [];
-    const now = new Date();
-    for (let i = 0; i < 3 && found.length === 0; i++) {
-      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
-      const ym = `${d.getFullYear()}${String(d.getMonth()+1).padStart(2,'0')}`;
-      const key = `trade_${lawdCd}_${ym}`;
-      let items;
-      if (isCacheValid(key)) { items = cache[key].data; }
-      else { items = await fetchItems(TRADE_URL, lawdCd, ym); cache[key] = { data: items, timestamp: Date.now() }; }
-      found = items.filter(d => (d.aptNm||'').includes(String(aptNm).slice(0,4)));
-    }
-    found.sort((a,b) => parseInt(b.dealDay||0) - parseInt(a.dealDay||0));
-    const prices = found.map(d => toAmt(d.dealAmount)).filter(v => v > 0);
-    const avg = prices.length ? Math.round(prices.reduce((a,b)=>a+b,0)/prices.length) : 0;
-    const latest = found[0];
-    // DB 업데이트
-    const dbApt = apartmentDB.find(a => a.lawdCd === lawdCd && a.name.includes(String(aptNm).slice(0,4)));
-    if (dbApt && avg) dbApt.latestPrice = avg;
-    res.json({
-      avg, latest: latest ? toAmt(latest.dealAmount) : 0,
-      latestDate: latest ? `${latest.dealYear}.${String(latest.dealMonth).padStart(2,'0')}.${String(latest.dealDay).padStart(2,'0')}` : '',
-      count: found.length, trades: found.slice(0, 10)
-    });
-  } catch(e) {
-    res.status(500).json({ error: e.message });
-  }
-});
-
-app.get('/api/trade', async (req, res) => {
-  try {
-    const { LAWD_CD, DEAL_YMD } = req.query;
-    const key = `trade_${LAWD_CD}_${DEAL_YMD}`;
-    if (!isCacheValid(key)) {
-      const items = await fetchItems(TRADE_URL, LAWD_CD, DEAL_YMD);
-      cache[key] = { data: items, timestamp: Date.now() };
-    }
-    res.json(cache[key].data);
-  } catch(e) { res.status(500).json({ error: e.message }); }
-});
-
-app.get('/api/rent', async (req, res) => {
-  try {
-    const { LAWD_CD, DEAL_YMD } = req.query;
-    const key = `rent_${LAWD_CD}_${DEAL_YMD}`;
-    if (!isCacheValid(key)) {
-      const items = await fetchItems(RENT_URL, LAWD_CD, DEAL_YMD);
-      cache[key] = { data: items, timestamp: Date.now() };
-    }
-    res.json(cache[key].data);
-  } catch(e) { res.status(500).json({ error: e.message }); }
-});
-
-app.get('/api/dashboard', async (req, res) => {
-  try {
-    const key = 'dashboard';
-    if (isCacheValid(key)) return res.json(cache[key].data);
-    console.log('대시보드 API 호출 시작...');
-    const guList = ['11710','11680','11650'];
-    const months = [];
-    for (let y=2023;y<=2026;y++) for (let m=1;m<=12;m++) {
-      if(y===2023&&m<5) continue; if(y===2026&&m>5) break;
-      months.push(`${y}${String(m).padStart(2,'0')}`);
-    }
-    const tradeByMonth={},jeonByMonth={},wolByMonth={};
-    let latestTrades=[];
-    for (const ym of months) {
-      let tAmts=[],jAmts=[],wAmts=[];
-      for (const gu of guList) {
-        try {
-          const tItems=await fetchItems(TRADE_URL,gu,ym);
-          tItems.forEach(d=>{const v=toAmt(d.dealAmount);if(v>1000){tAmts.push(v);if(ym>='202604')latestTrades.push({...d,ym});}});
-        } catch(e){}
-        try {
-          const rItems=await fetchItems(RENT_URL,gu,ym);
-          rItems.forEach(d=>{const dep=toAmt(d.deposit),wol=toAmt(d.monthlyRent);
-            if(!wol||wol===0){if(dep>1000)jAmts.push(dep);}else{if(wol>0)wAmts.push(wol);}});
-        } catch(e){}
+        if (data.meta?.is_end) break;
+        await sleep(80);
+      } catch (e) {
+        break;
       }
-      if(tAmts.length)tradeByMonth[ym]=Math.round(tAmts.reduce((a,b)=>a+b,0)/tAmts.length);
-      if(jAmts.length)jeonByMonth[ym]=Math.round(jAmts.reduce((a,b)=>a+b,0)/jAmts.length);
-      if(wAmts.length)wolByMonth[ym]=Math.round(wAmts.reduce((a,b)=>a+b,0)/wAmts.length);
-      console.log(`${ym} 완료`);
     }
-    latestTrades.sort((a,b)=>parseInt(b.dealDay||0)-parseInt(a.dealDay||0));
-    const allPrices=latestTrades.map(d=>toAmt(d.dealAmount)).filter(v=>v>0);
-    const avgPrice=allPrices.reduce((a,b)=>a+b,0)/(allPrices.length||1);
-    const result={
-      metrics:{jeonAvg:jeonByMonth[months[months.length-1]]||0,wolAvg:wolByMonth[months[months.length-1]]||0,tradeCount:latestTrades.length,specialCount:allPrices.filter(p=>p<avgPrice*0.8).length,jeonChg:0},
-      charts:{tradeByMonth,jeonByMonth,wolByMonth,months},
-      feed:latestTrades.filter(d=>toAmt(d.dealAmount)>=avgPrice*0.8).slice(0,10)
-    };
-    cache[key]={data:result,timestamp:Date.now()};
-    console.log('대시보드 캐싱 완료!');
-    res.json(result);
-  } catch(e) { res.status(500).json({error:e.message}); }
+    await sleep(120);
+  }
+  return found;
+}
+async function buildApartmentDB({ force = false } = {}) {
+  if (dbStatus.building) return apartmentDB;
+  if (!force && apartmentDB.length) return apartmentDB;
+  if (!force && loadCache()) return apartmentDB;
+  dbStatus = { building: true, builtAt: null, error: null, count: apartmentDB.length };
+  const all = [];
+  const globalSeen = new Set();
+  try {
+    for (const gu of GU_LIST) {
+      const apts = await fetchApartmentsForGu(gu, 3);
+      for (const apt of apts) {
+        const key = `${apt.gu}:${normalizeName(apt.name)}`;
+        if (globalSeen.has(key)) continue;
+        globalSeen.add(key);
+        all.push(apt);
+      }
+      dbStatus.count = all.length;
+    }
+    apartmentDB = all.sort((a, b) => a.gu.localeCompare(b.gu, 'ko') || a.name.localeCompare(b.name, 'ko'));
+    dbStatus = { building: false, builtAt: new Date().toISOString(), error: null, count: apartmentDB.length };
+    saveCache();
+  } catch (e) {
+    dbStatus = { building: false, builtAt: null, error: e.message, count: apartmentDB.length };
+    throw e;
+  }
+  return apartmentDB;
+}
+async function ensureDB() {
+  if (!apartmentDB.length && !dbStatus.building) {
+    loadCache() || buildApartmentDB().catch(e => { dbStatus.error = e.message; });
+  }
+}
+async function nearestSubway(apt) {
+  try {
+    const data = await kakaoKeywordSearch('지하철역', { category_group_code: 'SW8', x: apt.lng, y: apt.lat, radius: 2500, sort: 'distance' });
+    const d = data.documents?.[0];
+    if (!d) return null;
+    return { name: d.place_name, distanceM: Number(d.distance || 0), label: `${d.place_name} ${Math.round(Number(d.distance || 0))}m` };
+  } catch { return null; }
+}
+async function nearestSchool(apt) {
+  try {
+    const data = await kakaoKeywordSearch('초등학교', { x: apt.lng, y: apt.lat, radius: 1800, sort: 'distance' });
+    const docs = (data.documents || []).filter(d => d.place_name.includes('초등학교'));
+    const d = docs[0];
+    if (!d) return null;
+    return { name: d.place_name, distanceM: Number(d.distance || 0), label: `${d.place_name} ${Math.round(Number(d.distance || 0))}m` };
+  } catch { return null; }
+}
+function enrichTags(apt) {
+  const tags = new Set(apt.tags || []);
+  if (apt.subway?.distanceM <= 600) tags.add('역세권');
+  if (apt.school?.distanceM <= 500) tags.add('초품아');
+  if ((apt.gangnamScore || 0) >= 8) tags.add('강남접근성');
+  if (/주공|현대|한양|우성|재건축/.test(apt.name)) tags.add('재건축관심');
+  return [...tags];
+}
+async function analyzeApartment(apt) {
+  const cacheKey = apt.id;
+  if (analysisCache.has(cacheKey)) return analysisCache.get(cacheKey);
+  const [subway, school] = await Promise.all([nearestSubway(apt), nearestSchool(apt)]);
+  const analyzed = { ...apt, subway, school };
+  analyzed.tags = enrichTags(analyzed);
+  analyzed.score = Math.min(100, Math.round((analyzed.gangnamScore || 5) * 7 + (subway?.distanceM <= 600 ? 15 : 0) + (school?.distanceM <= 500 ? 15 : 0)));
+  analysisCache.set(cacheKey, analyzed);
+  return analyzed;
+}
+function similarScore(target, item) {
+  let score = 0;
+  const gangnamDiff = Math.abs((target.gangnamScore || 5) - (item.gangnamScore || 5));
+  score += Math.max(0, 30 - gangnamDiff * 5);
+  if (target.gu === item.gu) score += 12;
+  const distKm = haversineKm(target, item);
+  if (distKm < 1.5) score += 20; else if (distKm < 4) score += 12; else if (distKm < 8) score += 6;
+  const tBrand = BRAND_WORDS.find(w => target.name.includes(w));
+  if (tBrand && item.name.includes(tBrand)) score += 10;
+  const tTags = new Set(target.tags || []);
+  for (const tag of item.tags || []) if (tTags.has(tag)) score += 8;
+  return Math.round(score);
+}
+
+app.get('/api/config', (req, res) => res.json({ kakaoJsKey: KAKAO_JS_KEY || process.env.KAKAO_REST_KEY || '' }));
+app.get('/api/status', async (req, res) => { await ensureDB(); res.json({ ...dbStatus, hasKakaoKey: Boolean(KAKAO_REST_KEY), guCount: GU_LIST.length }); });
+app.post('/api/rebuild', async (req, res) => {
+  try { buildApartmentDB({ force: true }).catch(e => { dbStatus.error = e.message; }); res.json({ ok: true, message: '아파트 DB 재수집을 시작했습니다.' }); }
+  catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+app.get('/api/apartments', async (req, res) => {
+  await ensureDB();
+  const { gu = 'all', q = '', limit = '2000' } = req.query;
+  let list = apartmentDB;
+  if (gu !== 'all') list = list.filter(a => a.gu === gu);
+  if (q) list = list.filter(a => `${a.name} ${a.address} ${a.dong}`.includes(q));
+  res.json({ count: list.length, status: dbStatus, apartments: list.slice(0, Number(limit) || 2000) });
+});
+app.get('/api/apartments/:id', async (req, res) => {
+  await ensureDB();
+  const apt = apartmentDB.find(a => a.id === req.params.id);
+  if (!apt) return res.status(404).json({ error: '단지를 찾을 수 없습니다.' });
+  res.json(await analyzeApartment(apt));
+});
+app.get('/api/similar/:id', async (req, res) => {
+  await ensureDB();
+  const targetRaw = apartmentDB.find(a => a.id === req.params.id);
+  if (!targetRaw) return res.status(404).json({ error: '단지를 찾을 수 없습니다.' });
+  const target = await analyzeApartment(targetRaw);
+  const candidates = apartmentDB.filter(a => a.id !== target.id);
+  const topRaw = candidates.map(a => ({ ...a, similarScore: similarScore(target, a) }))
+    .sort((a, b) => b.similarScore - a.similarScore)
+    .slice(0, Number(req.query.limit) || 10);
+  const top = await Promise.all(topRaw.map(async a => ({ ...(await analyzeApartment(a)), similarScore: a.similarScore })));
+  res.json({ target, similar: top });
+});
+app.get('/api/compare', async (req, res) => {
+  await ensureDB();
+  const a = apartmentDB.find(x => x.id === req.query.a);
+  const b = apartmentDB.find(x => x.id === req.query.b);
+  if (!a || !b) return res.status(404).json({ error: '비교할 단지를 찾을 수 없습니다.' });
+  const [aa, bb] = await Promise.all([analyzeApartment(a), analyzeApartment(b)]);
+  res.json({ a: aa, b: bb });
 });
 
-const PORT = process.env.PORT || 3000;
+app.get('*', (req, res) => res.sendFile(path.join(__dirname, 'public', 'index.html')));
+
 app.listen(PORT, () => {
-  console.log(`서버 실행중: 포트 ${PORT}`);
-  // 아파트 DB 구축 (백그라운드)
-  setTimeout(buildApartmentDB, 3000);
-  // 대시보드 사전 로딩
-  setTimeout(() => {
-    axios.get(`http://localhost:${PORT}/api/dashboard`)
-      .then(() => console.log('대시보드 사전 로딩 완료!'))
-      .catch(e => console.log('사전 로딩 실패:', e.message));
-  }, 8000);
+  loadCache();
+  console.log(`Danji Compare MVP running on :${PORT}`);
+  if (!KAKAO_REST_KEY) console.log('주의: KAKAO_REST_KEY 환경변수가 없으면 자동 수집이 작동하지 않습니다.');
+  if (!KAKAO_JS_KEY) console.log('주의: KAKAO_JS_KEY 환경변수가 없으면 지도 로딩이 제한될 수 있습니다.');
 });
