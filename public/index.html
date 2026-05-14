@@ -447,6 +447,16 @@ tr:hover td{background:#fafbfe}
   <button class="mob-btn" onclick="showPage('special',this)"><svg viewBox="0 0 24 24"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>특수</button>
 </nav>
 
+<!-- 동일 컨디션 모달 -->
+<div class="modal-bg" id="similarModal" onclick="if(event.target===this)this.classList.remove('open')">
+  <div class="modal" style="max-width:400px;max-height:80vh;display:flex;flex-direction:column">
+    <button class="modal-close" onclick="document.getElementById('similarModal').classList.remove('open')">×</button>
+    <div class="modal-title" id="similarTitle" style="font-size:14px;margin-bottom:4px">동일 컨디션 단지</div>
+    <div style="font-size:11px;color:var(--text2);margin-bottom:14px">세대수·초중품아·역세권·강남접근성 기준 유사 단지</div>
+    <div id="similarList" style="overflow-y:auto;flex:1;padding-right:2px"></div>
+  </div>
+</div>
+
 <!-- MODAL -->
 <div class="modal-bg" id="loginModal" onclick="closeModalBg(event)">
   <div class="modal">
@@ -586,15 +596,21 @@ function renderMarkers(apts){
           if(apt.대단지)tags.push('<span class="apt-tag large">대단지 '+apt.세대수.toLocaleString()+'세대</span>');
           if((apt.특징||'').includes('재건축'))tags.push('<span class="apt-tag" style="background:#fef2f2;color:#ef4444">재건축</span>');
           
-          iw.setContent(`<div style="padding:14px;min-width:230px;font-family:'Noto Sans KR',sans-serif">
+          iw.setContent(`<div style="padding:14px;min-width:250px;max-width:280px;font-family:'Noto Sans KR',sans-serif">
             <div style="font-size:14px;font-weight:700;color:#0f172a;margin-bottom:3px">${apt.name}</div>
-            <div style="font-size:11px;color:#64748b;margin-bottom:8px">${apt.gu} ${apt.dong} · ${apt.세대수.toLocaleString()}세대 · ${apt.준공}년</div>
-            <div style="font-size:18px;font-weight:700;color:${color};margin-bottom:2px">${data.latest?fmtAmt(data.latest):'거래없음'}</div>
-            <div style="font-size:10px;color:#94a3b8;margin-bottom:8px">${data.latestDate?'최근거래 '+data.latestDate+' ('+data.count+'건)':'최근 3개월 거래 없음'}</div>
-            <div style="display:flex;gap:4px;flex-wrap:wrap;margin-bottom:10px">${tags.join('')}</div>
-            <div style="display:flex;gap:6px">
-              <button onclick="selectAptA('${apt.name}','${apt.gu} ${apt.dong}','${apt.lawdCd}')" style="flex:1;padding:7px;background:#0a1628;color:#fff;border:none;border-radius:7px;font-size:11px;font-weight:700;cursor:pointer;font-family:'Noto Sans KR',sans-serif">A단지로 비교</button>
-              <button onclick="selectAptB('${apt.name}','${apt.gu} ${apt.dong}','${apt.lawdCd}')" style="flex:1;padding:7px;background:#f1f5f9;color:#0f172a;border:none;border-radius:7px;font-size:11px;font-weight:700;cursor:pointer;font-family:'Noto Sans KR',sans-serif">B단지로 비교</button>
+            <div style="font-size:11px;color:#64748b;margin-bottom:6px">${apt.gu} ${apt.dong}</div>
+            <div style="font-size:20px;font-weight:700;color:${color};margin-bottom:2px">${data.latest?fmtAmt(data.latest):'거래없음'}</div>
+            <div style="font-size:10px;color:#94a3b8;margin-bottom:9px">${data.latestDate?'최근 '+data.latestDate+' · '+data.count+'건':'최근 3개월 거래 없음'}</div>
+            <div style="display:flex;gap:4px;flex-wrap:wrap;margin-bottom:11px">${tags.join('')}</div>
+            <button onclick="showSimilar('${apt.id}','${apt.name}','${apt.gu}',${data.latest||0})"
+              style="width:100%;padding:9px;background:linear-gradient(135deg,#c9a84c,#e8c96a);color:#0a1628;border:none;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;font-family:'Noto Sans KR',sans-serif;margin-bottom:6px">
+              🔍 동일 컨디션 단지 비교
+            </button>
+            <div style="display:flex;gap:5px">
+              <button onclick="quickCompare('${apt.name}','${apt.gu} ${apt.dong}','${apt.lawdCd}','A')"
+                style="flex:1;padding:7px;background:#0a1628;color:#fff;border:none;border-radius:7px;font-size:11px;font-weight:600;cursor:pointer;font-family:'Noto Sans KR',sans-serif">A로 설정</button>
+              <button onclick="quickCompare('${apt.name}','${apt.gu} ${apt.dong}','${apt.lawdCd}','B')"
+                style="flex:1;padding:7px;background:#f1f5f9;color:#0f172a;border:none;border-radius:7px;font-size:11px;font-weight:600;cursor:pointer;font-family:'Noto Sans KR',sans-serif">B로 설정</button>
             </div>
           </div>`);
         })
@@ -604,30 +620,87 @@ function renderMarkers(apts){
   });
 }
 
-function selectAptA(name,loc,lawdCd){
+function quickCompare(name,loc,lawdCd,which){
   if(openInfoWindow)openInfoWindow.close();
-  // 비교분석 페이지로 이동하면서 A단지 선택
-  const opt=new Option(`${name} (${loc})`,`${name}|${loc}|${lawdCd}`,true,true);
-  const sel=document.getElementById('cmp-a');
-  // 기존 옵션 확인
+  const val=`${name}|${loc}|${lawdCd}`;
+  const sel=document.getElementById(which==='A'?'cmp-a':'cmp-b');
   let found=false;
-  for(let o of sel.options){if(o.value===opt.value){sel.value=o.value;found=true;break}}
-  if(!found){sel.add(opt);sel.value=opt.value}
+  for(let o of sel.options){if(o.value===val){sel.value=val;found=true;break}}
+  if(!found){const opt=new Option(`${name} (${loc})`,val,true,true);sel.add(opt);sel.value=val}
   showPage('compare',null);
   document.querySelectorAll('.nav-link').forEach(b=>b.classList.remove('active'));
   document.querySelectorAll('.nav-link')[2].classList.add('active');
 }
-function selectAptB(name,loc,lawdCd){
+
+// 동일 컨디션 단지 보기
+async function showSimilar(aptId, aptName, aptGu, price){
   if(openInfoWindow)openInfoWindow.close();
-  const opt=new Option(`${name} (${loc})`,`${name}|${loc}|${lawdCd}`,true,true);
-  const sel=document.getElementById('cmp-b');
-  let found=false;
-  for(let o of sel.options){if(o.value===opt.value){sel.value=o.value;found=true;break}}
-  if(!found){sel.add(opt);sel.value=opt.value}
+  // 모달 열기
+  const modal = document.getElementById('similarModal');
+  const list  = document.getElementById('similarList');
+  document.getElementById('similarTitle').textContent = aptName + ' — 동일 컨디션 단지';
+  list.innerHTML = '<div class="loading"><div class="spinner"></div>유사 단지 분석 중...</div>';
+  modal.classList.add('open');
+  try {
+    const res = await fetch(`/api/similar?aptId=${encodeURIComponent(aptId)}&price=${price}`);
+    const data = await res.json();
+    if(!data.length){ list.innerHTML='<div style="padding:20px;text-align:center;color:var(--text3);font-size:12px">유사 단지를 찾지 못했습니다</div>'; return; }
+    list.innerHTML = data.map(apt=>{
+      const tags=[];
+      if((apt.특징||'').includes('초품아')||(apt.초||'').includes('초품아'))tags.push('<span class="apt-tag school">초품아</span>');
+      if(apt.역&&parseInt(apt.역)<=5)tags.push('<span class="apt-tag subway">역세권</span>');
+      if(apt.대단지)tags.push('<span class="apt-tag large">대단지</span>');
+      const gangnam='강남접근 '+((apt.gangnamScore||5))+'점';
+      return`<div style="background:#f8fafc;border:1px solid var(--border);border-radius:10px;padding:12px 13px;margin-bottom:8px">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px">
+          <div>
+            <div style="font-size:13px;font-weight:700;color:var(--text1);margin-bottom:2px">${apt.name}</div>
+            <div style="font-size:10px;color:var(--text3)">${apt.gu} ${apt.dong||''}</div>
+          </div>
+          <div style="text-align:right">
+            <div style="font-size:15px;font-weight:700;color:var(--accent)">${apt.latestPrice?fmtAmt(apt.latestPrice):'거래없음'}</div>
+            <div style="font-size:9px;color:var(--text3)">최근 실거래가</div>
+          </div>
+        </div>
+        <div style="display:flex;gap:3px;flex-wrap:wrap;margin-bottom:9px">
+          ${tags.join('')}
+          <span class="apt-tag" style="background:#f0fdf4;color:#166534">${gangnam}</span>
+        </div>
+        <div style="display:flex;gap:5px">
+          <button onclick="compareWith('${aptName}','${aptGu}','${apt.name}','${apt.gu} ${apt.dong||''}','${apt.lawdCd}')"
+            style="flex:1;padding:8px;background:var(--navy);color:#fff;border:none;border-radius:7px;font-size:11px;font-weight:700;cursor:pointer;font-family:'Noto Sans KR',sans-serif">
+            이 단지와 비교분석
+          </button>
+        </div>
+      </div>`;
+    }).join('');
+  } catch(e){
+    list.innerHTML=`<div style="color:var(--accent2);font-size:12px;padding:12px">오류: ${e.message}</div>`;
+  }
+}
+
+function compareWith(aName, aGu, bName, bLoc, bLawdCd){
+  document.getElementById('similarModal').classList.remove('open');
+  // A 단지 설정
+  const aVal=`${aName}|${aGu}|`;
+  const selA=document.getElementById('cmp-a');
+  let foundA=false;
+  for(let o of selA.options){if(o.value.startsWith(aName+'|')){selA.value=o.value;foundA=true;break}}
+  if(!foundA){const opt=new Option(`${aName} (${aGu})`,`${aName}|${aGu}|`,true,true);selA.add(opt);selA.value=opt.value}
+  // B 단지 설정
+  const bVal=`${bName}|${bLoc}|${bLawdCd}`;
+  const selB=document.getElementById('cmp-b');
+  let foundB=false;
+  for(let o of selB.options){if(o.value===bVal){selB.value=bVal;foundB=true;break}}
+  if(!foundB){const opt=new Option(`${bName} (${bLoc})`,bVal,true,true);selB.add(opt);selB.value=bVal}
   showPage('compare',null);
   document.querySelectorAll('.nav-link').forEach(b=>b.classList.remove('active'));
   document.querySelectorAll('.nav-link')[2].classList.add('active');
+  // 자동 비교 실행
+  setTimeout(runCompare, 300);
 }
+
+const GANGNAM_SCORE={'강남구':10,'서초구':9,'송파구':8,'강동구':6,'성동구':7,'광진구':6,'용산구':7,'동작구':6,'영등포구':5,'마포구':5,'양천구':4,'강서구':3,'구로구':4,'금천구':3,'관악구':5,'동대문구':5,'중구':6,'종로구':6,'성북구':4,'강북구':3,'도봉구':2,'노원구':3,'중랑구':4,'서대문구':4,'은평구':3};
 
 function applyFilter(){
   const f=document.getElementById('map-filter').value;
