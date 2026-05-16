@@ -1,34 +1,54 @@
-DanjiLab MVP v3 — 수도권 아파트 비교지도
-서울·경기·인천 아파트 단지를 카카오 장소검색 API로 자동 수집하고, 지도 기반으로 유사 단지 추천 및 A/B 비교를 제공하는 MVP입니다.
-파일 구조
+# DanjiLab DB Platform
+
+국토교통부 공동주택 단지 기본정보 XLSX에서 추출한 수도권 아파트 8,808개 기반 MVP입니다.
+
+## 파일 구조
+
 ```txt
 server.js
 package.json
 public/index.html
-data/apartments-cache.json   # 서버 실행 후 자동 생성
+public/style.css
+public/app.js
+data/apartments.json
+scripts/geocode.js
 ```
-Render 환경변수
-Render Dashboard → Service → Environment에 아래 값을 넣으세요.
+
+## Render 환경변수
+
 ```txt
-KAKAO\_REST\_KEY=카카오 REST API 키
-KAKAO\_JS\_KEY=카카오 JavaScript 키
+KAKAO_REST_KEY=카카오 REST API 키
+KAKAO_JS_KEY=카카오 JavaScript 키
 ```
-기존 코드처럼 API 키를 코드에 직접 넣는 방식은 노출 위험이 있어서 권장하지 않습니다.
-실행
+
+## 카카오 설정
+
+Kakao Developers → 내 애플리케이션 → 플랫폼 → Web 사이트 도메인에 아래 등록:
+
+```txt
+https://danji-compare.onrender.com
+```
+
+## 중요한 변경점
+
+이 버전은 카카오 장소검색으로 아파트를 찾지 않습니다.
+
+```txt
+국토부 공동주택 DB → apartments.json → 지도/비교
+```
+
+카카오 API는 좌표 생성용으로만 사용합니다.
+
+## 좌표 생성
+
+처음에는 좌표가 없는 단지도 임시좌표로 표시됩니다.
+실제 좌표를 붙이려면 사이트 우측 상단 `좌표 생성` 버튼을 누르거나 Render Shell에서:
+
 ```bash
-npm install
-npm start
+npm run geocode
 ```
-접속 후 서버가 카카오 API로 수도권 아파트를 수집합니다. 최초 수집은 시간이 걸릴 수 있고, 수집 결과는 `data/apartments-cache.json`에 저장됩니다.
-주요 기능
-풀스크린 지도 UI
-서울 25개구 + 경기 31개 시군 + 인천 10개 군구 아파트 자동 수집
-서울/경기/인천 및 시군구 필터
-단지명/동/주소 검색
-단지 클릭 시 상세 패널
-가까운 지하철역/초등학교 자동 분석
-강남역 기준 접근성 점수
-유사 단지 추천
-A/B 단지 비교표
-주의
-카카오 장소검색 기반 MVP이므로 모든 아파트 단지를 100% 보장하지 않습니다. 비주거 시설은 최대한 제외하도록 필터링했지만, 일부 오탐/누락은 발생할 수 있습니다. 추후 공동주택관리정보시스템, 실거래가 공공데이터, 수동 검수 DB를 붙이면 완성도가 올라갑니다.
+
+를 실행합니다.
+
+좌표 생성 결과는 `data/apartments.geocoded.json`으로 저장됩니다.
+Render 무료 인스턴스는 파일 저장이 영구 보장되지 않으므로, 최종적으로는 로컬에서 geocode 실행 후 결과 JSON을 GitHub에 커밋하는 방식이 가장 안정적입니다.

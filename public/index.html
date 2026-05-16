@@ -6,171 +6,67 @@
   <title>DanjiLab — 수도권 아파트 단지 비교지도</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;600;700;800&family=DM+Sans:wght@500;700;800&display=swap" rel="stylesheet">
-  <style>
-    :root{--navy:#07111f;--panel:#0b1628;--panel2:#101f36;--gold:#d8b45f;--blue:#3b82f6;--green:#22c55e;--red:#ef4444;--text:#eaf0f8;--muted:#92a1b6;--line:rgba(255,255,255,.12);--white:#fff;--shadow:0 24px 80px rgba(0,0,0,.35)}
-    *{box-sizing:border-box} html,body{height:100%;margin:0;font-family:'Noto Sans KR',system-ui,sans-serif;background:var(--navy);color:var(--text);overflow:hidden} button,input,select{font-family:inherit}
-    .app{height:100vh;display:grid;grid-template-rows:64px 1fr}.topbar{height:64px;background:rgba(7,17,31,.92);backdrop-filter:blur(16px);border-bottom:1px solid var(--line);display:flex;align-items:center;gap:16px;padding:0 18px;z-index:50}.brand{font-family:'DM Sans',sans-serif;font-weight:800;font-size:22px;letter-spacing:-.6px;white-space:nowrap}.brand span{font-size:11px;background:linear-gradient(135deg,var(--gold),#ffe39a);color:#081120;padding:3px 7px;border-radius:999px;margin-left:6px;vertical-align:middle}.search{flex:1;max-width:560px;position:relative}.search input{width:100%;height:42px;border:1px solid var(--line);border-radius:14px;background:rgba(255,255,255,.08);color:#fff;padding:0 14px 0 42px;outline:none}.search svg{position:absolute;left:14px;top:11px;color:var(--muted)}.top-actions{display:flex;gap:8px;margin-left:auto}.btn{border:1px solid var(--line);background:rgba(255,255,255,.08);color:#fff;border-radius:12px;height:40px;padding:0 14px;font-weight:700;cursor:pointer}.btn.gold{border:none;background:linear-gradient(135deg,var(--gold),#f5d478);color:#0a1322}.main{position:relative}.map{position:absolute;inset:0;background:#162033}.left-panel{position:absolute;left:18px;top:18px;width:320px;max-height:calc(100vh - 104px);background:rgba(11,22,40,.9);backdrop-filter:blur(18px);border:1px solid var(--line);border-radius:22px;box-shadow:var(--shadow);overflow:hidden;z-index:20}.panel-head{padding:18px 18px 14px;border-bottom:1px solid var(--line)}.eyebrow{font-size:11px;color:var(--gold);font-weight:800;letter-spacing:.8px}.title{font-size:24px;font-weight:800;line-height:1.18;margin-top:5px;letter-spacing:-.8px}.desc{font-size:13px;color:var(--muted);line-height:1.55;margin-top:9px}.stats{display:grid;grid-template-columns:1fr 1fr;gap:8px;padding:14px 18px;border-bottom:1px solid var(--line)}.stat{background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.08);border-radius:14px;padding:11px}.stat small{display:block;color:var(--muted);font-size:11px}.stat b{display:block;font-size:18px;margin-top:3px}.filters{padding:14px 18px;display:grid;gap:10px;border-bottom:1px solid var(--line)}.row{display:flex;gap:8px}.select{flex:1;height:38px;border:1px solid var(--line);border-radius:12px;background:#101f36;color:#fff;padding:0 10px}.pill-list{display:flex;gap:7px;flex-wrap:wrap}.pill{height:30px;border:1px solid var(--line);border-radius:999px;background:rgba(255,255,255,.06);color:#dbe7f6;padding:0 10px;font-size:12px;cursor:pointer}.pill.active{background:rgba(216,180,95,.18);border-color:rgba(216,180,95,.5);color:#ffe39a}.list{padding:12px 12px 14px;overflow:auto;max-height:300px}.apt-item{border:1px solid rgba(255,255,255,.08);background:rgba(255,255,255,.06);border-radius:15px;padding:12px;margin-bottom:8px;cursor:pointer}.apt-item:hover{border-color:rgba(216,180,95,.55)}.apt-name{font-weight:800;font-size:14px}.apt-meta{font-size:12px;color:var(--muted);margin-top:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.tags{display:flex;gap:5px;flex-wrap:wrap;margin-top:8px}.tag{font-size:10px;padding:3px 7px;border-radius:999px;background:rgba(59,130,246,.18);color:#bfdbfe}.tag.gold{background:rgba(216,180,95,.18);color:#fde68a}.tag.green{background:rgba(34,197,94,.16);color:#bbf7d0}.right-panel{position:absolute;right:18px;top:18px;width:390px;max-height:calc(100vh - 104px);background:rgba(255,255,255,.96);color:#0f172a;border-radius:24px;box-shadow:var(--shadow);overflow:hidden;z-index:22;display:none}.right-panel.open{display:block}.detail-head{padding:20px;border-bottom:1px solid #e5e7eb}.detail-title{font-size:21px;font-weight:900;letter-spacing:-.8px}.detail-address{color:#64748b;font-size:13px;margin-top:5px;line-height:1.45}.detail-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:14px 20px}.info{border:1px solid #e5e7eb;background:#f8fafc;border-radius:15px;padding:12px}.info small{display:block;color:#64748b;font-size:11px}.info b{font-size:14px;display:block;margin-top:4px}.score{padding:0 20px 16px}.scorebar{height:9px;background:#e5e7eb;border-radius:999px;overflow:hidden}.scorefill{height:100%;background:linear-gradient(90deg,#3b82f6,#22c55e);width:0}.similar{padding:14px 20px 20px;border-top:1px solid #e5e7eb}.similar h3{font-size:15px;margin:0 0 10px}.sim-item{display:grid;grid-template-columns:1fr auto;gap:8px;align-items:center;border:1px solid #e5e7eb;border-radius:14px;padding:10px;margin-bottom:7px;cursor:pointer}.sim-item:hover{background:#f8fafc}.sim-name{font-weight:800;font-size:13px}.sim-meta{font-size:12px;color:#64748b;margin-top:2px}.sim-score{font-size:12px;font-weight:900;color:#2563eb}.compare-bar{position:absolute;left:50%;bottom:22px;transform:translateX(-50%);min-width:520px;max-width:calc(100vw - 40px);background:rgba(7,17,31,.92);border:1px solid var(--line);border-radius:20px;box-shadow:var(--shadow);z-index:30;padding:12px;display:none;gap:10px;align-items:center}.compare-bar.open{display:flex}.slot{flex:1;background:rgba(255,255,255,.08);border:1px solid var(--line);border-radius:14px;padding:11px}.slot small{color:var(--muted);font-size:11px}.slot b{display:block;margin-top:3px}.modal{position:fixed;inset:0;background:rgba(0,0,0,.6);display:none;align-items:center;justify-content:center;z-index:80;padding:20px}.modal.open{display:flex}.compare-modal{width:min(900px,100%);background:#fff;color:#0f172a;border-radius:24px;box-shadow:var(--shadow);overflow:hidden}.modal-head{display:flex;justify-content:space-between;align-items:center;padding:20px;border-bottom:1px solid #e5e7eb}.modal-body{padding:20px}.cmp-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}.cmp-card{border:1px solid #e5e7eb;border-radius:18px;padding:16px}.cmp-card h3{margin:0 0 8px}.cmp-row{display:flex;justify-content:space-between;border-top:1px solid #f1f5f9;padding:10px 0;font-size:14px}.toast{position:absolute;left:50%;top:82px;transform:translateX(-50%);background:rgba(7,17,31,.92);border:1px solid var(--line);border-radius:999px;padding:10px 15px;color:#fff;z-index:100;display:none}.toast.show{display:block}.marker{background:#2563eb;color:white;border:2px solid white;border-radius:999px;box-shadow:0 6px 18px rgba(0,0,0,.25);height:30px;min-width:30px;padding:0 8px;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:11px}.marker.hot{background:#d8b45f;color:#0f172a}.marker.green{background:#22c55e}.marker.red{background:#ef4444}@media(max-width:900px){.topbar{gap:8px;padding:0 10px}.brand{font-size:18px}.top-actions{display:none}.left-panel{left:10px;right:10px;top:10px;width:auto;max-height:42vh}.right-panel{left:10px;right:10px;top:auto;bottom:10px;width:auto;max-height:48vh}.compare-bar{min-width:0;left:10px;right:10px;transform:none;bottom:10px}.title{font-size:20px}.search{max-width:none}.cmp-grid{grid-template-columns:1fr}}
-  </style>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/style.css" />
 </head>
 <body>
-<div class="app">
-  <header class="topbar">
-    <div class="brand">DanjiLab <span>MVP</span></div>
-    <div class="search">
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
-      <input id="searchInput" placeholder="단지명, 동, 주소 검색 예: 반포, 잠실, 래미안" />
-    </div>
-    <div class="top-actions">
-      <button class="btn" id="rebuildBtn">DB 재수집</button>
-      <button class="btn gold" id="compareBtn">비교하기</button>
-    </div>
-  </header>
-  <main class="main">
-    <div id="map" class="map"></div>
-    <section class="left-panel">
-      <div class="panel-head">
-        <div class="eyebrow">METRO APARTMENT MAP</div>
-        <div class="title">수도권 아파트<br>단지 비교지도</div>
-        <div class="desc">서울·경기·인천 아파트 단지만 정제 수집하고, 단지 클릭 시 유사 조건 단지를 추천합니다.</div>
-      </div>
+<header class="topbar">
+  <div class="brand" onclick="location.reload()">DanjiLab <span>DB</span></div>
+  <div class="searchbox"><span>⌕</span><input id="q" placeholder="단지명·동·주소 검색 예: 헬리오시티, 반포, 광교" /></div>
+  <button class="btn ghost" id="geocodeBtn">좌표 생성</button>
+  <button class="btn gold" id="compareOpen">비교하기</button>
+</header>
+
+<main class="layout">
+  <aside class="panel">
+    <section class="heroCard">
+      <div class="eyebrow">MOLIT APARTMENT DB</div>
+      <h1>수도권 아파트<br/>단지 비교지도</h1>
+      <p>국토부 공동주택 단지 기본정보 기반. 카카오 검색 DB가 아니라 실제 공동주택 DB로 단지를 표시합니다.</p>
       <div class="stats">
-        <div class="stat"><small>수집 단지</small><b id="countText">—</b></div>
-        <div class="stat"><small>DB 상태</small><b id="statusText">로딩</b></div>
+        <div><label>전체 단지</label><strong id="statTotal">-</strong></div>
+        <div><label>좌표 상태</label><strong id="statCoord">확인중</strong></div>
       </div>
-      <div class="filters">
-        <div class="row">
-          <select id="regionSelect" class="select"><option value="all">수도권 전체</option><option value="서울">서울</option><option value="경기">경기</option><option value="인천">인천</option></select><select id="guSelect" class="select"><option value="all">전체 지역</option></select>
-          <button class="btn gold" id="applyBtn">적용</button>
-        </div>
-        <div class="pill-list">
-          <button class="pill active" data-filter="all">전체</button>
-          <button class="pill" data-filter="gangnam">강남접근</button>
-          <button class="pill" data-filter="brand">브랜드</button>
-          <button class="pill" data-filter="rebuild">재건축 관심</button>
-        </div>
-      </div>
-      <div id="aptList" class="list"></div>
     </section>
-    <aside id="rightPanel" class="right-panel"></aside>
-    <div id="compareBar" class="compare-bar">
-      <div class="slot"><small>단지 A</small><b id="slotA">선택 전</b></div>
-      <div class="slot"><small>단지 B</small><b id="slotB">선택 전</b></div>
-      <button class="btn gold" id="openCompareBtn">비교표 보기</button>
+
+    <section class="filters">
+      <select id="sido"><option value="">수도권 전체</option></select>
+      <select id="sigungu"><option value="">전체 시군구</option></select>
+      <button id="apply" class="btn gold full">적용</button>
+      <div class="chips">
+        <button data-chip="large">대단지 1000세대↑</button>
+        <button data-chip="new">신축 10년↓</button>
+        <button data-chip="seoul">서울</button>
+      </div>
+    </section>
+
+    <section class="listWrap">
+      <div class="listHead"><strong>검색 결과</strong><span id="resultCount">-</span></div>
+      <div id="list" class="list"></div>
+    </section>
+  </aside>
+
+  <section id="map" class="map"><div class="mapLoading">지도 불러오는 중...</div></section>
+
+  <aside id="detail" class="detail empty">
+    <button class="close" id="closeDetail">×</button>
+    <div class="emptyText">지도나 목록에서 단지를 선택하면<br/>상세정보와 유사 단지를 보여드립니다.</div>
+  </aside>
+</main>
+
+<div id="compareModal" class="modalBg">
+  <div class="modal">
+    <button class="close" id="closeCompare">×</button>
+    <h2>단지 A/B 비교</h2>
+    <p>검색 결과에서 단지를 선택하거나 상세 패널에서 비교 추가를 누르세요.</p>
+    <div class="compareSlots">
+      <div><label>단지 A</label><select id="cmpA"></select></div>
+      <div><label>단지 B</label><select id="cmpB"></select></div>
     </div>
-    <div id="toast" class="toast"></div>
-  </main>
-</div>
-<div id="modal" class="modal">
-  <div class="compare-modal">
-    <div class="modal-head"><b>단지 비교분석</b><button class="btn" id="closeModal">닫기</button></div>
-    <div id="modalBody" class="modal-body"></div>
+    <button id="runCompare" class="btn gold full">비교분석 실행</button>
+    <div id="compareResult" class="compareResult"></div>
   </div>
 </div>
-<script>
-const state = { map:null, markers:[], apartments:[], filtered:[], selected:null, compareA:null, compareB:null, activeFilter:'all' };
-const AREAS = [
-  ['서울','강남구'],['서울','강동구'],['서울','강북구'],['서울','강서구'],['서울','관악구'],['서울','광진구'],['서울','구로구'],['서울','금천구'],['서울','노원구'],['서울','도봉구'],['서울','동대문구'],['서울','동작구'],['서울','마포구'],['서울','서대문구'],['서울','서초구'],['서울','성동구'],['서울','성북구'],['서울','송파구'],['서울','양천구'],['서울','영등포구'],['서울','용산구'],['서울','은평구'],['서울','종로구'],['서울','중구'],['서울','중랑구'],
-  ['경기','수원시'],['경기','성남시'],['경기','고양시'],['경기','용인시'],['경기','부천시'],['경기','안산시'],['경기','안양시'],['경기','남양주시'],['경기','화성시'],['경기','평택시'],['경기','의정부시'],['경기','시흥시'],['경기','파주시'],['경기','김포시'],['경기','광명시'],['경기','광주시'],['경기','군포시'],['경기','하남시'],['경기','오산시'],['경기','이천시'],['경기','안성시'],['경기','의왕시'],['경기','양주시'],['경기','구리시'],['경기','포천시'],['경기','여주시'],['경기','동두천시'],['경기','과천시'],['경기','가평군'],['경기','양평군'],['경기','연천군'],
-  ['인천','중구'],['인천','동구'],['인천','미추홀구'],['인천','연수구'],['인천','남동구'],['인천','부평구'],['인천','계양구'],['인천','서구'],['인천','강화군'],['인천','옹진군']
-];
-const $ = id => document.getElementById(id);
-function toast(msg){ const t=$('toast'); t.textContent=msg; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'),2200); }
-function tagClass(t){ if(t.includes('초')) return 'green'; if(t.includes('강남')) return 'gold'; return ''; }
-async function api(path, options){ const res = await fetch(path, options); if(!res.ok) throw new Error(await res.text()); return res.json(); }
-async function loadKakao(){
-  const cfg = await api('/api/config');
-  if(!cfg.kakaoJsKey) throw new Error('KAKAO_JS_KEY가 필요합니다. Render 환경변수에 입력하세요.');
-  await new Promise((resolve,reject)=>{ const s=document.createElement('script'); s.src=`//dapi.kakao.com/v2/maps/sdk.js?appkey=${cfg.kakaoJsKey}&libraries=services,clusterer&autoload=false`; s.onload=()=>kakao.maps.load(resolve); s.onerror=reject; document.head.appendChild(s); });
-}
-function initMap(){
-  state.map = new kakao.maps.Map($('map'), { center:new kakao.maps.LatLng(37.55,126.98), level:10 });
-  state.clusterer = new kakao.maps.MarkerClusterer({ map:state.map, averageCenter:true, minLevel:5, gridSize:70 });
-}
-function shortName(name){ const n=String(name||'단지').replace(/아파트$/,'').replace(/래미안/,'래').replace(/힐스테이트/,'힐').replace(/푸르지오/,'푸').replace(/롯데캐슬/,'롯').replace(/아이파크/,'아').replace(/e편한세상|이편한세상/,'편'); return n.length>4?n.slice(0,4):n; }
-function markerContent(apt){ const cls = (apt.gangnamScore>=8?'hot':(apt.name.match(/주공|현대|한양|우성/)?'red':'green')); return `<div class="marker ${cls}" title="${apt.name}">${shortName(apt.name)}</div>`; }
-function clearMarkers(){ state.clusterer?.clear(); state.markers.forEach(m=>m.setMap(null)); state.markers=[]; }
-function renderMarkers(list){
-  clearMarkers();
-  const markers = list.map(apt=>{
-    const marker = new kakao.maps.CustomOverlay({ position:new kakao.maps.LatLng(apt.lat,apt.lng), content:markerContent(apt), yAnchor:1.1, clickable:true });
-    marker.setMap(state.map); marker.getContent().onclick = () => selectApt(apt.id);
-    return marker;
-  });
-  state.markers = markers;
-}
-function passesFilter(apt){
-  if(state.activeFilter==='gangnam') return apt.gangnamScore>=8;
-  if(state.activeFilter==='brand') return /래미안|자이|푸르지오|힐스테이트|아이파크|롯데캐슬|더샵|e편한|이편한/.test(apt.name);
-  if(state.activeFilter==='rebuild') return /주공|현대|한양|우성/.test(apt.name);
-  return true;
-}
-function applyFilters(){
-  const gu=$('guSelect').value, region=$('regionSelect').value, q=$('searchInput').value.trim();
-  state.filtered = state.apartments.filter(a => (region==='all'||a.region===region) && (gu==='all'||`${a.region} ${a.gu}`===gu||a.gu===gu) && (!q || `${a.name} ${a.region} ${a.gu} ${a.address} ${a.dong}`.includes(q)) && passesFilter(a));
-  $('countText').textContent = state.filtered.length.toLocaleString();
-  renderList(state.filtered.slice(0,100)); renderMarkers(state.filtered.slice(0,1500));
-}
-function renderList(list){
-  $('aptList').innerHTML = list.map(a=>`<div class="apt-item" onclick="selectApt('${a.id}')"><div class="apt-name">${a.name}</div><div class="apt-meta">${a.region || ''} ${a.gu} ${a.dong || ''} · ${a.address || ''}</div><div class="tags"><span class="tag gold">강남 ${a.gangnamScore || 5}/10</span>${/래미안|자이|푸르지오|힐스테이트|아이파크|롯데캐슬|더샵/.test(a.name)?'<span class="tag">브랜드</span>':''}${/주공|현대|한양|우성/.test(a.name)?'<span class="tag">재건축관심</span>':''}</div></div>`).join('') || '<div class="apt-item"><div class="apt-name">검색 결과 없음</div><div class="apt-meta">필터를 바꿔보세요.</div></div>';
-}
-async function refreshStatus(){
-  const s = await api('/api/status');
-  $('statusText').textContent = s.building ? '수집중' : (s.error ? '오류' : '완료');
-  if(s.count) $('countText').textContent = s.count.toLocaleString();
-  return s;
-}
-async function loadApartments(){
-  await refreshStatus();
-  let data = await api('/api/apartments?limit=6000');
-  state.apartments = data.apartments || [];
-  if(!state.apartments.length && data.status?.building){
-    toast('DB 수집 중입니다. 잠시 후 자동 갱신됩니다.');
-    for(let i=0;i<12;i++){ await new Promise(r=>setTimeout(r,2500)); await refreshStatus(); data = await api('/api/apartments?limit=6000'); if(data.apartments?.length){ state.apartments=data.apartments; break; } }
-  }
-  state.filtered = state.apartments;
-  $('countText').textContent = state.apartments.length.toLocaleString();
-  applyFilters();
-}
-async function selectApt(id){
-  const apt = await api('/api/apartments/'+encodeURIComponent(id));
-  state.selected = apt;
-  state.map.panTo(new kakao.maps.LatLng(apt.lat,apt.lng));
-  const sim = await api('/api/similar/'+encodeURIComponent(id)+'?limit=8');
-  renderDetail(sim.target, sim.similar);
-}
-function renderDetail(apt, similar){
-  $('rightPanel').classList.add('open');
-  $('rightPanel').innerHTML = `<div class="detail-head"><div class="detail-title">${apt.name}</div><div class="detail-address">${apt.address || `${apt.gu} ${apt.dong}`}</div><div class="tags">${(apt.tags||[]).map(t=>`<span class="tag ${tagClass(t)}">${t}</span>`).join('')}</div></div><div class="detail-grid"><div class="info"><small>가까운 역</small><b>${apt.subway?.label || '분석중/미확인'}</b></div><div class="info"><small>가까운 초등학교</small><b>${apt.school?.label || '분석중/미확인'}</b></div><div class="info"><small>강남 접근성</small><b>${apt.gangnamScore || 5}/10</b></div><div class="info"><small>입지 스코어</small><b>${apt.score || 50}/100</b></div></div><div class="score"><div class="scorebar"><div class="scorefill" style="width:${apt.score || 50}%"></div></div><div style="display:flex;gap:8px;margin-top:12px"><button class="btn gold" onclick="setCompare('A','${apt.id}')">A로 선택</button><button class="btn" style="background:#0f172a" onclick="setCompare('B','${apt.id}')">B로 선택</button></div></div><div class="similar"><h3>비슷한 조건 단지</h3>${similar.map(s=>`<div class="sim-item" onclick="selectApt('${s.id}')"><div><div class="sim-name">${s.name}</div><div class="sim-meta">${s.region || ''} ${s.gu} ${s.dong || ''} · ${s.tags?.slice(0,2).join(' · ') || '조건 유사'}</div></div><div class="sim-score">${s.similarScore}</div></div>`).join('')}</div>`;
-}
-function setCompare(slot,id){
-  const apt = state.apartments.find(a=>a.id===id) || state.selected;
-  if(slot==='A'){ state.compareA = apt; $('slotA').textContent = apt.name; } else { state.compareB = apt; $('slotB').textContent = apt.name; }
-  $('compareBar').classList.add('open'); toast(`${apt.name} 단지를 ${slot}로 선택했습니다.`);
-}
-async function openCompare(){
-  if(!state.compareA || !state.compareB){ toast('비교할 단지 A/B를 먼저 선택하세요.'); return; }
-  const data = await api(`/api/compare?a=${encodeURIComponent(state.compareA.id)}&b=${encodeURIComponent(state.compareB.id)}`);
-  const card = x => `<div class="cmp-card"><h3>${x.name}</h3><div class="detail-address">${x.region || ''} ${x.gu || ''} · ${x.address}</div><div class="cmp-row"><span>강남 접근성</span><b>${x.gangnamScore}/10</b></div><div class="cmp-row"><span>가까운 역</span><b>${x.subway?.label || '미확인'}</b></div><div class="cmp-row"><span>초등학교</span><b>${x.school?.label || '미확인'}</b></div><div class="cmp-row"><span>입지 스코어</span><b>${x.score}/100</b></div><div class="cmp-row"><span>태그</span><b>${x.tags?.join(', ') || '-'}</b></div></div>`;
-  $('modalBody').innerHTML = `<div class="cmp-grid">${card(data.a)}${card(data.b)}</div><div style="margin-top:14px;color:#64748b;font-size:13px;line-height:1.6">※ 카카오 장소검색 기반 수도권 MVP 분석입니다. 세대수·준공연도·실거래가는 추후 공공데이터/수동 검수 DB로 보강하는 구조를 추천합니다.</div>`;
-  $('modal').classList.add('open');
-}
-function bind(){
-  function populateAreas(){
-  const region = $('regionSelect').value;
-  $('guSelect').innerHTML = '<option value="all">전체 지역</option>';
-  AREAS.filter(([r])=>region==='all'||r===region).forEach(([r,g])=>{ const o=document.createElement('option'); o.value=`${r} ${g}`; o.textContent=`${r} ${g}`; $('guSelect').appendChild(o); });
-}
-  populateAreas();
-  $('regionSelect').onchange=()=>{ populateAreas(); applyFilters(); };
-  $('applyBtn').onclick=applyFilters; $('searchInput').oninput=()=>applyFilters(); $('compareBtn').onclick=()=>$('compareBar').classList.toggle('open'); $('openCompareBtn').onclick=openCompare; $('closeModal').onclick=()=>$('modal').classList.remove('open');
-  document.querySelectorAll('.pill').forEach(p=>p.onclick=()=>{ document.querySelectorAll('.pill').forEach(x=>x.classList.remove('active')); p.classList.add('active'); state.activeFilter=p.dataset.filter; applyFilters(); });
-  $('rebuildBtn').onclick=async()=>{ await api('/api/rebuild',{method:'POST'}); toast('DB 재수집을 시작했습니다.'); setTimeout(loadApartments,1500); };
-}
-(async function(){
-  try{ bind(); await loadKakao(); initMap(); await loadApartments(); }
-  catch(e){ $('statusText').textContent='오류'; toast(e.message); console.error(e); }
-})();
-</script>
+<script src="/app.js"></script>
 </body>
 </html>
