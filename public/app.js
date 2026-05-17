@@ -88,24 +88,7 @@ function clusterStyle(size, bg, color) {
 }
 
 function initDebugPanel() {
-  debugPanel = document.createElement('div');
-  debugPanel.style.cssText = [
-    'position:absolute',
-    'right:10px',
-    'bottom:10px',
-    'z-index:35',
-    'background:rgba(7,17,31,.86)',
-    'color:#fff',
-    'border:1px solid rgba(255,255,255,.18)',
-    'border-radius:12px',
-    'padding:5px 7px',
-    'font:700 10px/1.35 system-ui,sans-serif',
-    'box-shadow:0 10px 30px rgba(0,0,0,.25)',
-    'opacity:.55',
-    'pointer-events:none'
-  ].join(';');
-  debugPanel.textContent = 'markers: loading';
-  $('map').appendChild(debugPanel);
+  debugPanel = null;
 }
 
 function bindEvents() {
@@ -301,10 +284,7 @@ function setClusterLayerVisible(visible) {
 }
 
 function updateDebugPanel(info) {
-  const attached = info.clusterAttached ? 'attached' : 'detached';
-  const text = `level ${info.level} · ${info.mode} · visible ${info.visible}/${info.total} · cluster ${info.clusterMarkers} · ${attached}`;
-  if (debugPanel) debugPanel.textContent = text;
-  console.log('[map markers]', info);
+  console.debug('[map markers]', info);
 }
 
 async function selectApt(id) {
