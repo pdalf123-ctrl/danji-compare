@@ -91,16 +91,17 @@ function initDebugPanel() {
   debugPanel = document.createElement('div');
   debugPanel.style.cssText = [
     'position:absolute',
-    'right:18px',
-    'bottom:18px',
+    'right:10px',
+    'bottom:10px',
     'z-index:35',
     'background:rgba(7,17,31,.86)',
     'color:#fff',
     'border:1px solid rgba(255,255,255,.18)',
     'border-radius:12px',
-    'padding:9px 11px',
-    'font:700 12px/1.45 system-ui,sans-serif',
+    'padding:5px 7px',
+    'font:700 10px/1.35 system-ui,sans-serif',
     'box-shadow:0 10px 30px rgba(0,0,0,.25)',
+    'opacity:.55',
     'pointer-events:none'
   ].join(';');
   debugPanel.textContent = 'markers: loading';
@@ -182,7 +183,7 @@ function buildQuery() {
 
 async function loadApartments() {
   const data = await api('/api/apartments?' + buildQuery());
-  allApts = data.apartments.filter(hasCoord);
+  allApts = data.apartments.filter(hasRealCoord);
   $('resultCount').textContent = `${fmt(data.count)}개`;
   renderList(data.apartments.slice(0, 80));
   renderMarkers(allApts);
@@ -193,6 +194,10 @@ function hasCoord(a) {
   return Number.isFinite(Number(a.lat)) && Number.isFinite(Number(a.lng));
 }
 
+function hasRealCoord(a) {
+  return hasCoord(a) && a.estimatedCoord === false;
+}
+
 function renderList(list) {
   $('list').innerHTML = list.map((a) => `
     <article class="item" onclick="selectApt('${a.id}')">
@@ -201,7 +206,7 @@ function renderList(list) {
       <div class="badges">
         <span class="badge gold">${fmt(a.households)}세대</span>
         <span class="badge blue">${a.approvedDate ? a.approvedDate.slice(0, 4) + '년' : '준공정보 없음'}</span>
-        ${a.estimatedCoord ? '<span class="badge red">임시좌표</span>' : ''}
+        ${hasRealCoord(a) ? '' : '<span class="badge red">좌표 보정 필요</span>'}
       </div>
     </article>`).join('') || '<div class="emptyText">검색 결과가 없습니다.</div>';
 }
@@ -305,7 +310,7 @@ function updateDebugPanel(info) {
 async function selectApt(id) {
   const a = await api('/api/apartments/' + encodeURIComponent(id));
   selectedA = selectedA || a;
-  if (hasCoord(a)) map.panTo(new kakao.maps.LatLng(Number(a.lat), Number(a.lng)));
+  if (hasRealCoord(a)) map.panTo(new kakao.maps.LatLng(Number(a.lat), Number(a.lng)));
   const sim = await api('/api/similar/' + encodeURIComponent(id) + '?limit=10');
   renderDetail(a, sim.similar);
 }
