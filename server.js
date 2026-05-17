@@ -60,8 +60,12 @@ function stableHash(str) {
   return Math.abs(h >>> 0);
 }
 
+function isFiniteCoord(a) {
+  return Number.isFinite(Number(a.lat)) && Number.isFinite(Number(a.lng));
+}
+
 function withFallbackCoord(a, idx = 0) {
-  if (a.lat && a.lng) return { ...a, estimatedCoord: false };
+  if (isFiniteCoord(a) && a.estimatedCoord !== true) return { ...a, estimatedCoord: false };
   const key = `${a.sido} ${a.sigungu}`;
   const center = AREA_CENTERS[key] || AREA_CENTERS[`${a.sido} ${String(a.sigungu || '').split(' ')[0]}`] || [37.5665, 126.9780];
   const h = stableHash(`${a.id}-${a.name}-${idx}`);
@@ -93,7 +97,11 @@ function aptSummary(a) {
 }
 
 function hasRealCoord(a) {
-  return !a.estimatedCoord && Number.isFinite(Number(a.lat)) && Number.isFinite(Number(a.lng));
+  return a.estimatedCoord === false && isFiniteCoord(a);
+}
+
+function hasEstimatedCoord(a) {
+  return a.estimatedCoord === true;
 }
 
 function incrementCounter(obj, key, hasCoord) {
@@ -108,9 +116,15 @@ function diagnosticsSummary() {
   const bySido = {};
   const bySigungu = {};
   const missingCoordinateSamples = [];
+  let realCoordinateCount = 0;
+  let estimatedCoordinateCount = 0;
+  let geocodeFailedCount = 0;
 
   for (const a of apartments) {
     const hasCoord = hasRealCoord(a);
+    if (hasCoord) realCoordinateCount++;
+    if (hasEstimatedCoord(a)) estimatedCoordinateCount++;
+    if (a.geocodeFailed) geocodeFailedCount++;
     incrementCounter(bySido, a.sido || 'unknown', hasCoord);
     incrementCounter(bySigungu, `${a.sido || 'unknown'} ${a.sigungu || 'unknown'}`.trim(), hasCoord);
     if (!hasCoord && missingCoordinateSamples.length < 100) {
@@ -123,16 +137,19 @@ function diagnosticsSummary() {
         dong: a.dong,
         roadAddress: a.roadAddress,
         jibunAddress: a.jibunAddress,
-        geocodeStatus: a.geocodeStatus || null
+        geocodeStatus: a.geocodeStatus || null,
+        geocodeFailed: !!a.geocodeFailed
       });
     }
   }
 
-  const withCoordinates = apartments.filter(hasRealCoord).length;
   return {
     total: apartments.length,
-    withCoordinates,
-    withoutCoordinates: apartments.length - withCoordinates,
+    realCoordinateCount,
+    estimatedCoordinateCount,
+    geocodeFailedCount,
+    withCoordinates: realCoordinateCount,
+    withoutCoordinates: apartments.length - realCoordinateCount,
     bySido,
     bySigungu,
     missingCoordinateSamples
@@ -166,6 +183,61 @@ async function geocodeOne(a) {
   return { lat: Number(d.y), lng: Number(d.x) };
 }
 
+function serializeApartment(a) {
+  const { displayAddress, age, gangnamScore, isLarge, ...rest } = a;
+  if (rest.estimatedCoord === true) {
+    delete rest.lat;
+    delete rest.lng;
+  }
+  return rest;
+}
+
+function saveGeocodedApartments() {
+  fs.mkdirSync(DATA_DIR, { recursive: true });
+  fs.writeFileSync(GEO_PATH, JSON.stringify(apartments.map(serializeApartment), null, 0));
+}
+
+function needsGeocode(a) {
+  return !hasRealCoord(a) && !a.geocodeFailed;
+}
+
+async function geocodeBatch(limit = 100) {
+  if (!KAKAO_REST_KEY) return { ok: false, error: 'KAKAO_REST_KEY missing' };
+  const targets = apartments
+    .map((a, index) => ({ a, index }))
+    .filter(({ a }) => needsGeocode(a))
+    .slice(0, Math.max(1, Math.min(Number(limit) || 100, 500)));
+
+  const result = { ok: true, requested: targets.length, success: 0, failed: 0, remaining: 0 };
+
+  for (const { a, index } of targets) {
+    try {
+      const coord = await geocodeOne(a);
+      if (coord) {
+        apartments[index] = {
+          ...a,
+          ...coord,
+          estimatedCoord: false,
+          geocodeFailed: false,
+          geocodeStatus: 'ok'
+        };
+        result.success++;
+      } else {
+        apartments[index] = { ...a, estimatedCoord: true, geocodeFailed: true, geocodeStatus: 'not_found' };
+        result.failed++;
+      }
+    } catch (e) {
+      apartments[index] = { ...a, estimatedCoord: true, geocodeFailed: true, geocodeStatus: 'error', geocodeError: e.message };
+      result.failed++;
+    }
+    await new Promise(r => setTimeout(r, 80));
+  }
+
+  saveGeocodedApartments();
+  result.remaining = apartments.filter(needsGeocode).length;
+  return result;
+}
+
 async function geocodeMissing(limit = 999999) {
   if (geocodeState.running) return geocodeState;
   if (!KAKAO_REST_KEY) { geocodeState.error = 'KAKAO_REST_KEY missing'; return geocodeState; }
@@ -177,24 +249,24 @@ async function geocodeMissing(limit = 999999) {
       try {
         const coord = await geocodeOne(apartments[i]);
         if (coord) {
-          apartments[i] = { ...apartments[i], ...coord, estimatedCoord: false, geocodeStatus: 'ok' };
+          apartments[i] = { ...apartments[i], ...coord, estimatedCoord: false, geocodeFailed: false, geocodeStatus: 'ok' };
           geocodeState.success++;
         } else {
-          apartments[i] = { ...apartments[i], geocodeStatus: 'not_found' };
+          apartments[i] = { ...apartments[i], estimatedCoord: true, geocodeFailed: true, geocodeStatus: 'not_found' };
           geocodeState.failed++;
         }
       } catch (e) {
-        apartments[i] = { ...apartments[i], geocodeStatus: 'error' };
+        apartments[i] = { ...apartments[i], estimatedCoord: true, geocodeFailed: true, geocodeStatus: 'error', geocodeError: e.message };
         geocodeState.failed++;
       }
       geocodeState.done++;
       if (geocodeState.done % 100 === 0) {
-        fs.writeFileSync(GEO_PATH, JSON.stringify(apartments.map(({estimatedCoord,displayAddress,age,gangnamScore,isLarge,...rest}) => rest), null, 0));
+        saveGeocodedApartments();
         console.log(`[geocode] ${geocodeState.done}/${geocodeState.total} success=${geocodeState.success} failed=${geocodeState.failed}`);
       }
       await new Promise(r => setTimeout(r, 80));
     }
-    fs.writeFileSync(GEO_PATH, JSON.stringify(apartments.map(({estimatedCoord,displayAddress,age,gangnamScore,isLarge,...rest}) => rest), null, 0));
+    saveGeocodedApartments();
   } catch (e) {
     geocodeState.error = e.message;
   } finally {
@@ -210,7 +282,9 @@ loadApartments();
 app.get('/api/config', (req, res) => res.json({ kakaoJsKey: KAKAO_JS_KEY }));
 app.get('/api/status', (req, res) => {
   const real = apartments.filter(hasRealCoord).length;
-  res.json({ count: apartments.length, realCoords: real, estimatedCoords: apartments.length - real, hasKakaoRestKey: !!KAKAO_REST_KEY, hasKakaoJsKey: !!KAKAO_JS_KEY, geocode: geocodeState });
+  const estimated = apartments.filter(hasEstimatedCoord).length;
+  const failed = apartments.filter(a => a.geocodeFailed).length;
+  res.json({ count: apartments.length, realCoords: real, estimatedCoords: estimated, geocodeFailed: failed, hasKakaoRestKey: !!KAKAO_REST_KEY, hasKakaoJsKey: !!KAKAO_JS_KEY, geocode: geocodeState });
 });
 app.get('/api/diagnostics', (req, res) => {
   res.json(diagnosticsSummary());
@@ -218,6 +292,15 @@ app.get('/api/diagnostics', (req, res) => {
 app.post('/api/geocode/start', (req, res) => {
   geocodeMissing(Number(req.body?.limit || 999999));
   res.json({ ok: true, message: '좌표 생성 작업을 시작했습니다.', geocode: geocodeState });
+});
+app.post('/api/geocode-batch', async (req, res) => {
+  try {
+    const result = await geocodeBatch(Number(req.body?.limit || req.query.limit || 100));
+    if (!result.ok) return res.status(400).json(result);
+    res.json({ ...result, diagnostics: diagnosticsSummary() });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: e.message });
+  }
 });
 app.get('/api/apartments', (req, res) => {
   const q = normalizeText(req.query.q || '');
