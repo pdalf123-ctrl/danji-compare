@@ -262,7 +262,7 @@ function updateMarkerVisibility() {
   const bounds = map.getBounds();
   let visibleCount = 0;
 
-  setClusterLayerVisible(!showLabels);
+  const clusterAttached = setClusterLayerVisible(!showLabels);
 
   markerMap.forEach(({ overlay, pos }) => {
     const visible = showLabels && bounds.contain(pos);
@@ -275,19 +275,29 @@ function updateMarkerVisibility() {
     mode: showLabels ? 'pill' : 'cluster',
     total: allApts.length,
     visible: visibleCount,
-    clusterMarkers: clusterMarkers.length
+    clusterMarkers: clusterMarkers.length,
+    clusterAttached
   });
 }
 
 function setClusterLayerVisible(visible) {
-  if (!clusterer || clusterLayerVisible === visible) return;
+  if (!clusterer) return false;
+  if (clusterLayerVisible === visible) return clusterLayerVisible;
   clusterer.clear();
-  if (visible && clusterMarkers.length) clusterer.addMarkers(clusterMarkers);
-  clusterLayerVisible = visible;
+  if (visible && clusterMarkers.length) {
+    clusterer.setMap(map);
+    clusterer.addMarkers(clusterMarkers);
+    clusterLayerVisible = true;
+  } else {
+    clusterer.setMap(null);
+    clusterLayerVisible = false;
+  }
+  return clusterLayerVisible;
 }
 
 function updateDebugPanel(info) {
-  const text = `level ${info.level} · ${info.mode} · visible ${info.visible}/${info.total} · cluster ${info.clusterMarkers}`;
+  const attached = info.clusterAttached ? 'attached' : 'detached';
+  const text = `level ${info.level} · ${info.mode} · visible ${info.visible}/${info.total} · cluster ${info.clusterMarkers} · ${attached}`;
   if (debugPanel) debugPanel.textContent = text;
   console.log('[map markers]', info);
 }
