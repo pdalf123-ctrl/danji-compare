@@ -1,80 +1,3 @@
-let map, clusterer, allApts = [], selectedA = null, selectedB = null, areas = {};
-const markerMap = new Map();
-const clusterMarkers = [];
-const $ = (id) => document.getElementById(id);
-const fmt = (n) => n == null ? '-' : Number(n).toLocaleString('ko-KR');
-const currentFilters = { chip: null };
-
-function shortName(name) {
-  const cleaned = String(name || '')
-    .replace(/아파트|주상복합|공동주택|단지/g, '')
-    .replace(/[\s()[\]{}]/g, '')
-    .trim();
-  return Array.from(cleaned || name || '').slice(0, 10).join('');
-}
-
-async function api(url, opt) {
-  const r = await fetch(url, opt);
-  if (!r.ok) throw new Error(await r.text());
-  return r.json();
-}
-
-async function boot() {
-  await loadKakaoMap();
-  initMap();
-  bindEvents();
-  areas = await api('/api/areas');
-  fillAreas();
-  await refreshStatus();
-  await loadApartments();
-}
-
-async function loadKakaoMap() {
-  const cfg = await api('/api/config');
-  if (!cfg.kakaoJsKey) throw new Error('KAKAO_JS_KEY 환경변수가 없습니다.');
-  await new Promise((resolve, reject) => {
-    if (window.kakao?.maps) return resolve();
-    const s = document.createElement('script');
-    s.src = `https://dapi.kakao.com/v2/maps/sdk.js?appkey=${cfg.kakaoJsKey}&autoload=false&libraries=services,clusterer`;
-    s.onload = () => kakao.maps.load(resolve);
-    s.onerror = reject;
-    document.head.appendChild(s);
-  });
-}
-
-function initMap() {
-  map = new kakao.maps.Map($('map'), { center: new kakao.maps.LatLng(37.49, 126.99), level: 10 });
-  map.addControl(new kakao.maps.ZoomControl(), kakao.maps.ControlPosition.RIGHT);
-  clusterer = new kakao.maps.MarkerClusterer({
-    map,
-    averageCenter: true,
-    minLevel: 7,
-    disableClickZoom: false,
-    gridSize: 70,
-    calculator: [20, 80, 200],
-    styles: [
-      clusterStyle('42px', '#e7c463', '#111827'),
-      clusterStyle('52px', '#3b82f6', '#fff'),
-      clusterStyle('64px', '#111827', '#fff'),
-      clusterStyle('78px', '#19b56b', '#fff')
-    ]
-  });
-  kakao.maps.event.addListener(map, 'idle', updateMarkerVisibility);
-}
-
-function clusterStyle(size, bg, color) {
-  return {
-    width: size,
-    height: size,
-    background: bg,
-    border: '3px solid #fff',
-    borderRadius: '50%',
-    color,
-    textAlign: 'center',
-    fontWeight: '900',
-    lineHeight: `calc(${size} - 6px)`,
-    boxShadow: '0 10px 28px rgba(0,0,0,.28)'
-  };
 }
 
 function bindEvents() {
@@ -170,6 +93,7 @@ function renderMarkers(apts) {
   markerMap.clear();
   clusterer.clear();
   clusterMarkers.length = 0;
+  clusterLayerVisible = false;
 
   const bounds = new kakao.maps.LatLngBounds();
   const markerImage = transparentMarkerImage();
@@ -191,18 +115,45 @@ function renderMarkers(apts) {
     bounds.extend(pos);
   });
 
-  clusterer.addMarkers(clusterMarkers);
   if (apts.length) map.setBounds(bounds, 40, 40, 40, 380);
   updateMarkerVisibility();
 }
 
 function updateMarkerVisibility() {
-  if (!map || !markerMap.size) return;
-  const showLabels = map.getLevel() <= 6;
+  if (!map) return;
+  const level = map.getLevel();
+  const showLabels = level <= 6;
   const bounds = map.getBounds();
+  let visibleCount = 0;
+
+  setClusterLayerVisible(!showLabels);
+
   markerMap.forEach(({ overlay, pos }) => {
-    overlay.setMap(showLabels && bounds.contain(pos) ? map : null);
+    const visible = showLabels && bounds.contain(pos);
+    overlay.setMap(visible ? map : null);
+    if (visible) visibleCount++;
   });
+
+  updateDebugPanel({
+    level,
+    mode: showLabels ? 'pill' : 'cluster',
+    total: allApts.length,
+    visible: visibleCount,
+    clusterMarkers: clusterMarkers.length
+  });
+}
+
+function setClusterLayerVisible(visible) {
+  if (!clusterer || clusterLayerVisible === visible) return;
+  clusterer.clear();
+  if (visible && clusterMarkers.length) clusterer.addMarkers(clusterMarkers);
+  clusterLayerVisible = visible;
+}
+
+function updateDebugPanel(info) {
+  const text = `level ${info.level} · ${info.mode} · visible ${info.visible}/${info.total} · cluster ${info.clusterMarkers}`;
+  if (debugPanel) debugPanel.textContent = text;
+  console.log('[map markers]', info);
 }
 
 async function selectApt(id) {
