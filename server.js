@@ -91,6 +91,54 @@ function aptSummary(a) {
     displayAddress: a.roadAddress || a.jibunAddress || `${a.sido} ${a.sigungu} ${a.dong || ''}`.trim()
   };
 }
+
+function hasRealCoord(a) {
+  return !a.estimatedCoord && Number.isFinite(Number(a.lat)) && Number.isFinite(Number(a.lng));
+}
+
+function incrementCounter(obj, key, hasCoord) {
+  if (!key) return;
+  if (!obj[key]) obj[key] = { total: 0, withCoordinates: 0, withoutCoordinates: 0 };
+  obj[key].total++;
+  if (hasCoord) obj[key].withCoordinates++;
+  else obj[key].withoutCoordinates++;
+}
+
+function diagnosticsSummary() {
+  const bySido = {};
+  const bySigungu = {};
+  const missingCoordinateSamples = [];
+
+  for (const a of apartments) {
+    const hasCoord = hasRealCoord(a);
+    incrementCounter(bySido, a.sido || 'unknown', hasCoord);
+    incrementCounter(bySigungu, `${a.sido || 'unknown'} ${a.sigungu || 'unknown'}`.trim(), hasCoord);
+    if (!hasCoord && missingCoordinateSamples.length < 100) {
+      missingCoordinateSamples.push({
+        id: a.id,
+        complexCode: a.complexCode,
+        name: a.name,
+        sido: a.sido,
+        sigungu: a.sigungu,
+        dong: a.dong,
+        roadAddress: a.roadAddress,
+        jibunAddress: a.jibunAddress,
+        geocodeStatus: a.geocodeStatus || null
+      });
+    }
+  }
+
+  const withCoordinates = apartments.filter(hasRealCoord).length;
+  return {
+    total: apartments.length,
+    withCoordinates,
+    withoutCoordinates: apartments.length - withCoordinates,
+    bySido,
+    bySigungu,
+    missingCoordinateSamples
+  };
+}
+
 function similarityScore(target, cand) {
   let s = 0;
   if (target.sido === cand.sido) s += 12;
@@ -161,8 +209,11 @@ loadApartments();
 
 app.get('/api/config', (req, res) => res.json({ kakaoJsKey: KAKAO_JS_KEY }));
 app.get('/api/status', (req, res) => {
-  const real = apartments.filter(a => !a.estimatedCoord).length;
+  const real = apartments.filter(hasRealCoord).length;
   res.json({ count: apartments.length, realCoords: real, estimatedCoords: apartments.length - real, hasKakaoRestKey: !!KAKAO_REST_KEY, hasKakaoJsKey: !!KAKAO_JS_KEY, geocode: geocodeState });
+});
+app.get('/api/diagnostics', (req, res) => {
+  res.json(diagnosticsSummary());
 });
 app.post('/api/geocode/start', (req, res) => {
   geocodeMissing(Number(req.body?.limit || 999999));
@@ -174,7 +225,7 @@ app.get('/api/apartments', (req, res) => {
   const sigungu = req.query.sigungu || '';
   const minHouseholds = Number(req.query.minHouseholds || 0);
   const maxAge = Number(req.query.maxAge || 0);
-  const limit = Math.min(Number(req.query.limit || 4000), 9000);
+  const limit = Math.min(Number(req.query.limit || 9000), 9000);
   let data = apartments;
   if (sido) data = data.filter(a => a.sido === sido);
   if (sigungu) data = data.filter(a => a.sigungu === sigungu);
